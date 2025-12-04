@@ -195,11 +195,6 @@ if ($origin === '' && $destination === '' && $date === '' && $class === '') {
       </div>
       </div>
 
-      <!-- Tombol kembali ke Home -->
-      <div class="mb-3">
-        <a href="home.html" class="btn btn-outline-secondary">&larr; Kembali ke Home</a>
-      </div>
-
       <div class="card">
       <div class="card-body">
         <h5 class="card-title">Hasil Pencarian</h5>
