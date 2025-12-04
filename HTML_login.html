@@ -34,7 +34,13 @@
                             <label for="password" class="form-label">Password</label>
                             <input type="password" class="form-control" id="password" name="password" placeholder="Masukkan password Anda" required>
                             </div>
-                            
+                            <div class="mb-3">
+                            <label for="role" class="form-label">Role</label>
+                            <select class="form-select" id="role" name="role" required>
+                              <option value="user">User</option>
+                              <option value="admin">Admin</option>
+                            </select>
+                            </div>
                             <div class="d-grid">
                             <button type="submit" class="btn btn-primary">Login</button>
                             </div>
@@ -42,13 +48,45 @@
                         </div>
                         <div class="text-center mb-4">
                           <a href="register.html" class="link-primary">Register/Daftar</a>
-                          <span class="text-muted mx-2">|</span>
-                          <a href="database_viewer.php" class="link-secondary" style="font-size: 0.9em;">📊 Lihat Database</a>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    <script>
+      document.getElementById('loginForm').addEventListener('submit', function(event) {
+        event.preventDefault(); // Prevent form submission
+
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const role = document.getElementById('role').value;
+
+        // Send login data to the server
+        fetch('login.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({ email, password, role }),
+        })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              if (data.role === 'admin') {
+                window.location.href = 'admin.php';
+              } else {
+                window.location.href = 'home.html';
+              }
+            } else {
+              alert(data.message); // Show error message in a popup
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            alert('Terjadi kesalahan. Silakan coba lagi.');
+          });
+      });
+    </script>
   </body>
 </html>
