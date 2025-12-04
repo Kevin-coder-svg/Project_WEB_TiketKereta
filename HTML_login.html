@@ -24,20 +24,22 @@
                         <h3>KAI - Kaki Anak Itam</h3>
                         </div>
                         <div class="card-body">
-                        <form>
+                        <div id="msg" class="mb-3"></div>
+                        <form id="loginForm" method="post" action="login.php" novalidate>
                             <div class="mb-3">
-                            <label for="username" class="form-label">Username</label>
-                            <input type="text" class="form-control" id="username" placeholder="Enter your username">
+                            <label for="nip" class="form-label">NIP</label>
+                            <input type="text" class="form-control" id="nip" name="nip" placeholder="Masukkan NIP Anda" required>
                             </div>
                             <div class="mb-3">
                             <label for="password" class="form-label">Password</label>
-                            <input type="password" class="form-control" id="password" placeholder="Enter your password">
+                            <input type="password" class="form-control" id="password" name="password" placeholder="Masukkan password Anda" required>
                             </div>
                             <div class="mb-3">
-                                <select class="form-select" aria-label="Default select example">
-                                    <option selected >Pilih Role</option>
-                                    <option value="1">Admin</option>
-                                    <option value="2">User</option>
+                                <label for="role" class="form-label">Role</label>
+                                <select class="form-select" id="role" name="role" required>
+                                    <option value="">Pilih Role</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="user">User</option>
                                 </select>
                             </div>
                             <div class="d-grid">
@@ -46,7 +48,9 @@
                         </form>
                         </div>
                         <div class="text-center mb-4">
-                            <a href="register.html" class="btn btn-link">Register/Daftar</a>
+                          <a href="register.html" class="link-primary">Register/Daftar</a>
+                          <span class="text-muted mx-2">|</span>
+                          <a href="database_viewer.php" class="link-secondary" style="font-size: 0.9em;">📊 Lihat Database</a>
                         </div>
                     </div>
                 </div>

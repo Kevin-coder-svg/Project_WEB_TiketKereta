@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Home - KAI Tiket Kereta</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <style>
+      body {
+        background-image: url('background.jpg');
+        background-size: cover;
+        background-attachment: fixed;
+        min-height: 100vh;
+      }
+      .navbar {
+        background-color: rgba(0, 0, 0, 0.8) !important;
+      }
+      .content-section {
+        background-color: rgba(255, 255, 255, 0.95);
+        border-radius: 8px;
+        padding: 30px;
+        margin-top: 30px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+      .welcome-card {
+        background: linear-gradient(135deg, #0b5ed7 0%, #0d6efd 100%);
+        color: white;
+        border-radius: 8px;
+        padding: 30px;
+        margin-bottom: 20px;
+      }
+      .feature-card {
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 15px;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+      .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="#">KAI - Tiket Kereta</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <span class="nav-link text-white" id="userGreeting">Selamat datang!</span>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link text-danger" href="logout.php">Logout</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+      <div class="content-section">
+        <!-- Welcome Card -->
+        <div class="welcome-card">
+          <h1 id="userName">Selamat Datang!</h1>
+          <p class="mb-0">Nikmati kemudahan dalam memesan tiket kereta online.</p>
+        </div>
+
+        <!-- Features -->
+        <h3 class="mb-4">Fitur Tersedia</h3>
+        <div class="row">
+          <div class="col-md-6">
+            <div class="feature-card">
+              <h5>📅 Cari Jadwal Kereta</h5>
+              <p class="text-muted mb-0">Lihat jadwal kereta dari berbagai rute dan pilih yang sesuai dengan kebutuhan Anda.</p>
+            </div>
+            <div class="feature-card">
+              <h5>🎫 Pesan Tiket</h5>
+              <p class="text-muted mb-0">Pesan tiket dengan mudah dan dapatkan konfirmasi langsung ke email Anda.</p>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="feature-card">
+              <h5>📋 Riwayat Pemesanan</h5>
+              <p class="text-muted mb-0">Kelola dan lihat semua riwayat pemesanan tiket Anda.</p>
+            </div>
+            <div class="feature-card">
+              <h5>⚙️ Pengaturan Profil</h5>
+              <p class="text-muted mb-0">Ubah data profil dan password akun Anda dengan aman.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="mt-5 pt-4 border-top">
+          <h4 class="mb-3">Aksi Cepat</h4>
+          <a href="#" class="btn btn-primary me-2">Cari Jadwal</a>
+          <a href="#" class="btn btn-outline-primary">Lihat Pemesanan</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center text-white mt-5 py-4" style="background-color: rgba(0, 0, 0, 0.8);">
+      <p>&copy; 2025 PT. KAI (Persero). All rights reserved.</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+    <script>
+      // Simple script to display user info from sessionStorage (set by login.php or JavaScript)
+      // Note: For production, use server-side sessions (PHP session) instead
+      document.addEventListener('DOMContentLoaded', function(){
+        // Get user info from query params or localStorage (backend should redirect with user info or use server sessions)
+        const userName = localStorage.getItem('userName') || 'Pengguna';
+        const userRole = localStorage.getItem('userRole') || 'user';
+        
+        document.getElementById('userName').textContent = 'Selamat Datang, ' + userName + '!';
+        document.getElementById('userGreeting').textContent = 'Hi, ' + userName + ' (' + userRole + ')';
+      });
+    </script>
+  </body>
+</html>
