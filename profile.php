@@ -367,7 +367,7 @@ $conn->close();
 
                 <div class="info-card">
                     <div class="info-label">📍 Alamat</div>
-                    <div class="info-value"><?php echo htmlspecialchars($user['address'] ?? 'Tidak tersedia'); ?></div>
+                    <div class="info-value"><?php echo htmlspecialchars($user['alamat'] ?? 'Tidak tersedia'); ?></div>
                 </div>
 
                 <div class="info-card">
