@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jadwal Keberangkatan Kereta Api</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            padding: 30px 0;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .search-section {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 0.95em;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 10px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-search {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-search:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-reset {
+            background: #f0f0f0;
+            color: #333;
+            border: 2px solid #e0e0e0;
+        }
+
+        .btn-reset:hover {
+            background: #e8e8e8;
+        }
+
+        .results-section {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .results-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .results-header h2 {
+            font-size: 1.5em;
+        }
+
+        .result-count {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.95em;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead tr {
+            background: #f5f5f5;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 700;
+            color: #333;
+            font-size: 0.95em;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #e8e8e8;
+            color: #555;
+        }
+
+        tbody tr {
+            transition: background-color 0.3s;
+        }
+
+        tbody tr:hover {
+            background-color: #f9f9f9;
+        }
+
+        .train-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .train-icon {
+            font-size: 1.5em;
+        }
+
+        .train-details h4 {
+            margin-bottom: 4px;
+            color: #333;
+            font-size: 0.95em;
+        }
+
+        .train-details p {
+            font-size: 0.85em;
+            color: #999;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-delayed {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .price {
+            font-weight: 700;
+            color: #667eea;
+            font-size: 1.1em;
+        }
+
+        .btn-book {
+            background: #28a745;
+            color: white;
+            padding: 8px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            font-size: 0.9em;
+        }
+
+        .btn-book:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 3px 10px rgba(40, 167, 69, 0.3);
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 50px 20px;
+            color: #999;
+        }
+
+        .no-results-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .search-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .button-group {
+                justify-content: stretch;
+            }
+
+            button {
+                flex: 1;
+            }
+
+            table {
+                font-size: 0.9em;
+            }
+
+            th, td {
+                padding: 10px;
+            }
+
+            .train-info {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚂 Jadwal Keberangkatan Kereta Api</h1>
+            <p>Temukan jadwal kereta api dan pesan tiket Anda sekarang</p>
+        </div>
+
+        <div class="search-section">
+            <div class="search-grid">
+                <div class="form-group">
+                    <label for="stasiun-asal">Stasiun Asal</label>
+                    <input type="text" id="stasiun-asal" placeholder="Cth: Jakarta">
+                </div>
+                <div class="form-group">
+                    <label for="stasiun-tujuan">Stasiun Tujuan</label>
+                    <input type="text" id="stasiun-tujuan" placeholder="Cth: Surabaya">
+                </div>
+                <div class="form-group">
+                    <label for="tanggal-berangkat">Tanggal Berangkat</label>
+                    <input type="date" id="tanggal-berangkat">
+                </div>
+                <div class="form-group">
+                    <label for="kelas-kereta">Kelas Kereta</label>
+                    <select id="kelas-kereta">
+                        <option value="">Semua Kelas</option>
+                        <option value="ekonomi">Ekonomi</option>
+                        <option value="bisnis">Bisnis</option>
+                        <option value="eksekutif">Eksekutif</option>
+                        <option value="premium">Premium</option>
+                    </select>
+                </div>
+            </div>
+            <div class="button-group">
+                <button class="btn-reset" onclick="resetForm()">Reset</button>
+                <button class="btn-search" onclick="searchSchedules()">Cari Jadwal</button>
+            </div>
+        </div>
+
+        <div class="results-section">
+            <div class="results-header">
+                <h2>Hasil Pencarian</h2>
+                <div class="result-count" id="result-count">Menampilkan 0 hasil</div>
+            </div>
+            <div class="table-responsive">
+                <table id="schedules-table">
+                    <thead>
+                        <tr>
+                            <th>Kereta</th>
+                            <th>Rute</th>
+                            <th>Waktu Berangkat</th>
+                            <th>Waktu Tiba</th>
+                            <th>Durasi</th>
+                            <th>Kelas</th>
+                            <th>Harga</th>
+                            <th>Kursi Tersedia</th>
+                            <th>Status</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <tr>
+                            <td colspan="10" class="no-results">
+                                <div class="no-results-icon">🔍</div>
+                                <p>Silakan lakukan pencarian untuk melihat jadwal kereta api</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample data - dalam praktik nyata, data akan diambil dari database
+        const trainSchedules = [
+            {
+                id: 1,
+                name: 'Argo Bromo Anggrek',
+                route: 'Jakarta - Surabaya',
+                departure: '18:00',
+                arrival: '06:30',
+                duration: '12h 30m',
+                class: 'Eksekutif',
+                price: 450000,
+                seats: 25,
+                status: 'Aktif',
+                origin: 'Jakarta',
+                destination: 'Surabaya',
+                date: '2025-12-05'
+            },
+            {
+                id: 2,
+                name: 'Bima',
+                route: 'Jakarta - Surabaya',
+                departure: '20:00',
+                arrival: '08:00',
+                duration: '12h',
+                class: 'Bisnis',
+                price: 350000,
+                seats: 15,
+                status: 'Aktif',
+                origin: 'Jakarta',
+                destination: 'Surabaya',
+                date: '2025-12-05'
+            },
+            {
+                id: 3,
+                name: 'Gajayana',
+                route: 'Jakarta - Malang',
+                departure: '08:15',
+                arrival: '14:45',
+                duration: '6h 30m',
+                class: 'Ekonomi',
+                price: 150000,
+                seats: 40,
+                status: 'Aktif',
+                origin: 'Jakarta',
+                destination: 'Malang',
+                date: '2025-12-05'
+            },
+            {
+                id: 4,
+                name: 'Eksekutif Brantas',
+                route: 'Bandung - Yogyakarta',
+                departure: '10:00',
+                arrival: '15:30',
+                duration: '5h 30m',
+                class: 'Eksekutif',
+                price: 280000,
+                seats: 10,
+                status: 'Tunda',
+                origin: 'Bandung',
+                destination: 'Yogyakarta',
+                date: '2025-12-05'
+            },
+            {
+                id: 5,
+                name: 'Mutiara Timur',
+                route: 'Semarang - Jakarta',
+                departure: '22:00',
+                arrival: '04:00',
+                duration: '6h',
+                class: 'Premium',
+                price: 520000,
+                seats: 8,
+                status: 'Aktif',
+                origin: 'Semarang',
+                destination: 'Jakarta',
+                date: '2025-12-05'
+            }
+        ];
+
+        function searchSchedules() {
+            const origin = document.getElementById('stasiun-asal').value.toLowerCase();
+            const destination = document.getElementById('stasiun-tujuan').value.toLowerCase();
+            const date = document.getElementById('tanggal-berangkat').value;
+            const trainClass = document.getElementById('kelas-kereta').value;
+
+            let results = trainSchedules.filter(train => {
+                const matchOrigin = !origin || train.origin.toLowerCase().includes(origin);
+                const matchDestination = !destination || train.destination.toLowerCase().includes(destination);
+                const matchClass = !trainClass || train.class.toLowerCase() === trainClass;
+                const matchDate = !date || train.date === date;
+
+                return matchOrigin && matchDestination && matchClass && matchDate;
+            });
+
+            displayResults(results);
+        }
+
+        function displayResults(results) {
+            const tableBody = document.getElementById('table-body');
+            const resultCount = document.getElementById('result-count');
+
+            if (results.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="10" class="no-results">
+                            <div class="no-results-icon">❌</div>
+                            <p>Tidak ada kereta yang sesuai dengan kriteria pencarian Anda</p>
+                        </td>
+                    </tr>
+                `;
+                resultCount.textContent = 'Menampilkan 0 hasil';
+                return;
+            }
+
+            tableBody.innerHTML = results.map(train => `
+                <tr>
+                    <td>
+                        <div class="train-info">
+                            <div class="train-icon">🚂</div>
+                            <div class="train-details">
+                                <h4>${train.name}</h4>
+                                <p>No: ${train.id}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td>${train.route}</td>
+                    <td><strong>${train.departure}</strong></td>
+                    <td><strong>${train.arrival}</strong></td>
+                    <td>${train.duration}</td>
+                    <td>${train.class}</td>
+                    <td><span class="price">Rp ${train.price.toLocaleString('id-ID')}</span></td>
+                    <td><strong>${train.seats}</strong> kursi</td>
+                    <td>
+                        <span class="status-badge ${train.status === 'Aktif' ? 'status-active' : 'status-delayed'}">
+                            ${train.status}
+                        </span>
+                    </td>
+                    <td><button class="btn-book" onclick="bookTicket(${train.id})">Pesan</button></td>
+                </tr>
+            `).join('');
+
+            resultCount.textContent = `Menampilkan ${results.length} hasil`;
+        }
+
+        function resetForm() {
+            document.getElementById('stasiun-asal').value = '';
+            document.getElementById('stasiun-tujuan').value = '';
+            document.getElementById('tanggal-berangkat').value = '';
+            document.getElementById('kelas-kereta').value = '';
+            
+            const tableBody = document.getElementById('table-body');
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="10" class="no-results">
+                        <div class="no-results-icon">🔍</div>
+                        <p>Silakan lakukan pencarian untuk melihat jadwal kereta api</p>
+                    </td>
+                </tr>
+            `;
+            document.getElementById('result-count').textContent = 'Menampilkan 0 hasil';
+        }
+
+        function bookTicket(trainId) {
+            alert(`Tiket kereta dengan ID ${trainId} akan segera dipesan. Fitur ini akan dihubungkan ke halaman pemesanan.`);
+            // Dalam implementasi nyata, akan mengarahkan ke halaman pemesanan
+            // window.location.href = `/pesan.php?train_id=${trainId}`;
+        }
+
+        // Set minimum date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('tanggal-berangkat').min = today;
+    </script>
+</body>
+</html>
