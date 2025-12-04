@@ -16,7 +16,7 @@ if ($conn->connect_error) {
     die('Database connection error: ' . $conn->connect_error);
 }
 
-// Set charset
+// Set charset  
 $conn->set_charset('utf8mb4');
 
 // Handle GET request (for debugging)
@@ -55,6 +55,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $full_name = isset($_POST['full_name']) ? trim($_POST['full_name']) : '';
 $nip = isset($_POST['nip']) ? trim($_POST['nip']) : '';
 $password_input = isset($_POST['password']) ? $_POST['password'] : '';
+$email = isset($_POST['email']) ? trim($_POST['email']) : '';
+$phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
+$alamat = isset($_POST['alamat']) ? trim($_POST['alamat']) : '';
 
 // Server-side validation
 $errors = [];
@@ -69,6 +72,21 @@ if (!ctype_digit($nip) || strlen($nip) < 6 || strlen($nip) > 16) {
 
 if (strlen($password_input) < 6) {
     $errors[] = 'Password minimal 6 karakter.';
+}
+
+// Email validation
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    $errors[] = 'Email tidak valid.';
+}
+
+// Phone validation: digits only, 8-15 characters
+if (!ctype_digit($phone) || strlen($phone) < 8 || strlen($phone) > 15) {
+    $errors[] = 'No. telepon harus berupa angka 8-15 digit.';
+}
+
+// Alamat validation: minimal 5 karakter
+if (strlen($alamat) < 5) {
+    $errors[] = 'Alamat harus diisi minimal 5 karakter.';
 }
 
 // If there are validation errors, return them
@@ -104,11 +122,68 @@ if (!empty($errors)) {
     exit;
 }
 
+// Check for existing NIP or email to provide friendly error messages
+$existsErrors = [];
+
+$checkNik = $conn->prepare("SELECT 1 FROM users WHERE nik = ? LIMIT 1");
+if ($checkNik) {
+    $checkNik->bind_param('s', $nip);
+    $checkNik->execute();
+    $checkNik->store_result();
+    if ($checkNik->num_rows > 0) {
+        $existsErrors[] = 'NIP sudah terdaftar.';
+    }
+    $checkNik->close();
+}
+
+$checkEmail = $conn->prepare("SELECT 1 FROM users WHERE email = ? LIMIT 1");
+if ($checkEmail) {
+    $checkEmail->bind_param('s', $email);
+    $checkEmail->execute();
+    $checkEmail->store_result();
+    if ($checkEmail->num_rows > 0) {
+        $existsErrors[] = 'Email sudah terdaftar.';
+    }
+    $checkEmail->close();
+}
+
+if (!empty($existsErrors)) {
+    http_response_code(409);
+    ?>
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="utf-8">
+        <title>Registrasi Gagal</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+        <style>
+            body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #f8f9fa; }
+            .card { max-width: 500px; }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <div class="card-body">
+                <h3 class="text-danger mb-3">❌ Registrasi Gagal</h3>
+                <div class="alert alert-danger">
+                    <?php foreach ($existsErrors as $err): ?>
+                        <p class="mb-2">• <?php echo htmlspecialchars($err); ?></p>
+                    <?php endforeach; ?>
+                </div>
+                <a href="register.html" class="btn btn-primary w-100">Kembali ke Form</a>
+            </div>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+
 // Hash password using PHP's built-in password_hash (bcrypt)
 $hashed_password = password_hash($password_input, PASSWORD_BCRYPT);
 
 // Prepare SQL statement to prevent SQL injection
-$sql = "INSERT INTO users (full_name, password, nik, role, created_at) VALUES (?, ?, ?, 'user', NOW())";
+$sql = "INSERT INTO users (full_name, password, nik, email, phone, alamat, role, created_at) VALUES (?, ?, ?, ?, ?, ?, 'user', NOW())";
 $stmt = $conn->prepare($sql);
 
 if (!$stmt) {
@@ -139,8 +214,8 @@ if (!$stmt) {
     exit;
 }
 
-// Bind parameters
-$stmt->bind_param('sss', $full_name, $hashed_password, $nip);
+// Bind parameters (full_name, password, nik, email, phone, alamat)
+$stmt->bind_param('ssssss', $full_name, $hashed_password, $nip, $email, $phone, $alamat);
 
 // Execute statement
 if ($stmt->execute()) {

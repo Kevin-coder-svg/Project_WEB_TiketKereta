@@ -14,23 +14,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 // Get form data
-$nip = isset($_POST['nip']) ? trim($_POST['nip']) : '';
+$email = isset($_POST['email']) ? trim($_POST['email']) : '';
 $password = isset($_POST['password']) ? $_POST['password'] : '';
-$role = isset($_POST['role']) ? $_POST['role'] : '';
 
 // Server-side validation
 $errors = [];
 
-if (empty($nip)) {
-    $errors[] = 'NIP harus diisi.';
+if (empty($email)) {
+    $errors[] = 'Email harus diisi.';
 }
 
 if (empty($password)) {
     $errors[] = 'Password harus diisi.';
-}
-
-if (empty($role)) {
-    $errors[] = 'Role harus dipilih.';
 }
 
 // If there are validation errors, return them
@@ -40,8 +35,8 @@ if (!empty($errors)) {
     exit;
 }
 
-// Prepared statement to get user by NIP and role
-$sql = "SELECT user_id, full_name, password, role FROM users WHERE nik = ? AND role = ?";
+// Prepared statement to get user by email
+$sql = "SELECT user_id, full_name, password, role, email FROM users WHERE email = ? LIMIT 1";
 $stmt = $conn->prepare($sql);
 
 if (!$stmt) {
@@ -50,7 +45,7 @@ if (!$stmt) {
 }
 
 // Bind parameters
-$stmt->bind_param('ss', $nip, $role);
+$stmt->bind_param('s', $email);
 
 // Execute statement
 if (!$stmt->execute()) {
@@ -64,7 +59,7 @@ $result = $stmt->get_result();
 // Check if user exists
 if ($result->num_rows === 0) {
     http_response_code(401);
-    echo 'NIP atau role tidak ditemukan.';
+    echo 'Email tidak ditemukan.';
     exit;
 }
 
@@ -83,7 +78,7 @@ session_start();
 $_SESSION['user_id'] = $user['user_id'];
 $_SESSION['full_name'] = $user['full_name'];
 $_SESSION['role'] = $user['role'];
-$_SESSION['nip'] = $nip;
+$_SESSION['email'] = $user['email'];
 
 // Return HTML with JavaScript to store user info and redirect
 ?>
