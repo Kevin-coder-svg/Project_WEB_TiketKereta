@@ -115,9 +115,52 @@ if ($origin === '' && $destination === '' && $date === '' && $class === '') {
     .container { max-width: 1100px; margin-top: 30px; }
     .status-active { background: #d4edda; color: #155724; padding: 6px 10px; border-radius: 14px; }
     .status-delayed { background: #fff3cd; color: #856404; padding: 6px 10px; border-radius: 14px; }
+
+    /* Modern fixed back arrow in top-left */
+    .back-arrow {
+      position: fixed;
+      left: 16px;
+      top: 16px;
+      width: 52px;
+      height: 52px;
+      background: linear-gradient(135deg,#0d6efd 0%, #3b82f6 100%);
+      color: #fff;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 6px 18px rgba(13,110,253,0.18);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 9999;
+      text-decoration: none;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .back-arrow:hover {
+      transform: translateX(-6px) scale(1.03);
+      box-shadow: 0 10px 26px rgba(13,110,253,0.26);
+    }
+
+    .back-arrow svg {
+      width: 20px;
+      height: 20px;
+      fill: white;
+    }
+
+    @media (max-width: 576px) {
+      .back-arrow { left: 10px; top: 10px; width:44px; height:44px; border-radius:10px; }
+    }
   </style>
 </head>
 <body>
+  <!-- Modern back arrow (top-left) -->
+  <a href="home.html" class="back-arrow" title="Kembali ke Home" aria-label="Kembali ke Home">
+    <!-- simple left arrow SVG -->
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+      <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+    </svg>
+  </a>
   <div class="container">
     <div class="card mb-4">
       <div class="card-body">
