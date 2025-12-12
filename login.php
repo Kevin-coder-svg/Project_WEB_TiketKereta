@@ -21,9 +21,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['loggedin'] = true;
             $_SESSION['email'] = $user['email'];
             $_SESSION['role'] = $user['role'];
-
+            // TAMBAHKAN INI:
+            $_SESSION['user_id'] = $user['user_id']; // atau 'id' tergantung nama kolom di DB
+            $_SESSION['full_name'] = $user['full_name']; // tambahkan jika ada
+            
             // Return success response
-            echo json_encode(["success" => true, "role" => $user['role']]);
+            echo json_encode([
+                "success" => true, 
+                "role" => $user['role'],
+                "user_id" => $user['user_id'], // kirim juga ke frontend jika diperlukan
+                "full_name" => $user['full_name']
+            ]);
         } else {
             // Return error response for incorrect password
             echo json_encode(["success" => false, "message" => "Password salah!"]);
