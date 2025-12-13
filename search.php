@@ -286,18 +286,7 @@ if ($origin === '' && $destination === '' && $date === '' && $class === '') {
                     </td>
                     <td>
                       <?php if ($scheduleId > 0): ?>
-                        <button type="button" class="btn btn-sm btn-primary open-seats-btn"
-                          data-bs-toggle="modal" data-bs-target="#seatModal"
-                          data-schedule-id="<?= htmlspecialchars($scheduleId) ?>"
-                          data-train-name="<?= htmlspecialchars($trainName) ?>"
-                          data-origin="<?= htmlspecialchars($originName) ?>"
-                          data-destination="<?= htmlspecialchars($destName) ?>"
-                          data-departure="<?= htmlspecialchars($r['departure_time']) ?>"
-                          data-arrival="<?= htmlspecialchars($r['arrival_time']) ?>"
-                          data-price="<?= htmlspecialchars($price) ?>"
-                          data-classes="<?= htmlspecialchars(implode(',', $classes)) ?>"
-                          data-seats="<?= htmlspecialchars($seats !== null ? $seats : 0) ?>"
-                        >Pilih</button>
+                        <a href="booking_detail.php?schedule_id=<?= htmlspecialchars($scheduleId) ?>" class="btn btn-sm btn-primary">Pilih</a>
                       <?php else: ?>
                         <button class="btn btn-sm btn-secondary" disabled>—</button>
                       <?php endif; ?>

@@ -98,7 +98,56 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && isset($_GET['selected_seats'])) {
   }
 }
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  if ($has_carriage_col && $has_seats_col && $has_passenger_col && $has_status_col) {
+  // Check if coming from seat_selection with num_passengers
+  if (isset($_SESSION['num_passengers']) && isset($_SESSION['selected_seats'])) {
+    $num_passengers = $_SESSION['num_passengers'];
+    $selected_seats = $_SESSION['selected_seats'];
+    if (count($selected_seats) !== $num_passengers) {
+      $errors[] = 'Jumlah kursi dan penumpang tidak cocok.';
+    } else {
+      // Create passengers array with default names
+      $passengers = [];
+      for ($i = 0; $i < $num_passengers; $i++) {
+        $passengers[] = ['name' => 'Penumpang ' . ($i + 1), 'nip' => '', 'phone' => ''];
+      }
+      // Create bookings for each passenger
+      $conn->begin_transaction();
+      try {
+        $total_amount = $num_passengers * $schedule['price'];
+        $now = date('Y-m-d H:i:s');
+        $user_id = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
+
+        // Insert main booking
+        $stmt = $conn->prepare("INSERT INTO bookings (user_id, schedule_id, seats, total_amount, status, created_at) VALUES (?, ?, ?, ?, 'PENDING', ?)");
+        $stmt->bind_param('iiids', $user_id, $schedule_id, $num_passengers, $total_amount, $now);
+        $stmt->execute();
+        $booking_id = $conn->insert_id;
+        $stmt->close();
+
+        // Insert tickets for each passenger
+        if ($hasTickets) {
+          $tstmt = $conn->prepare("INSERT INTO tickets (booking_id, seat_number, passenger_name, passenger_nik, passenger_phone) VALUES (?, ?, ?, ?, ?)");
+          foreach ($passengers as $index => $p) {
+            $seat = $selected_seats[$index];
+            $tstmt->bind_param('issss', $booking_id, $seat, $p['name'], $p['nip'], $p['phone']);
+            $tstmt->execute();
+          }
+          $tstmt->close();
+        }
+
+        $conn->commit();
+
+        // Clear session
+        unset($_SESSION['num_passengers'], $_SESSION['selected_seats'], $_SESSION['booking_schedule_id']);
+
+        header('Location: booking_confirm.php?booking_id=' . $booking_id);
+        exit;
+      } catch (Exception $ex) {
+        $conn->rollback();
+        $errors[] = $ex->getMessage();
+      }
+    }
+  } elseif ($has_carriage_col && $has_seats_col && $has_passenger_col && $has_status_col) {
         // Full booking flow with availability check
         $passenger_name = trim($_POST['passenger_name'] ?? '');
         $carriage_id = isset($_POST['carriage_id']) ? (int)$_POST['carriage_id'] : 0;

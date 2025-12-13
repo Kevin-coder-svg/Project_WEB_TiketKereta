@@ -11,7 +11,8 @@ $conn = new mysqli($db_host, $db_user, $db_password, $db_name);
 
 // Check connection
 if ($conn->connect_error) {
-    die('Koneksi database gagal: ' . $conn->connect_error);
+    // die('Koneksi database gagal: ' . $conn->connect_error);
+    $conn = null; // Set to null for graceful handling
 }
 
 // Set charset to utf8mb4
