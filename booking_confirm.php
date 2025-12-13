@@ -34,7 +34,22 @@ if (!$booking) {
 $user_id = isset($booking['user_id']) ? $booking['user_id'] : null;
 $schedule_id = isset($booking['schedule_id']) ? $booking['schedule_id'] : null;
 $carriage_id = isset($booking['carriage_id']) ? $booking['carriage_id'] : null;
-$seats = isset($booking['seats']) ? (int)$booking['seats'] : 1;
+$seats = isset($booking['seats']) ? (int)$booking['seats'] : null;
+// If seats column not present or null, try to count tickets rows for this booking
+if (empty($seats)) {
+  $seats = 1;
+  $check = $conn->query("SHOW TABLES LIKE 'tickets'");
+  if ($check && $check->num_rows > 0) {
+    $q = $conn->prepare("SELECT COUNT(*) AS cnt FROM tickets WHERE booking_id = ?");
+    if ($q) {
+      $q->bind_param('i', $booking_id);
+      $q->execute();
+      $r = $q->get_result()->fetch_assoc();
+      if ($r) $seats = max(1, (int)$r['cnt']);
+      $q->close();
+    }
+  }
+}
 $passenger_name = $booking['passenger_name'] ?? null;
 $total_amount = $booking['total_amount'] ?? ($booking['total_amount'] ?? 0);
 $status = $booking['status'] ?? ($booking['payment_status'] ?? 'PENDING');

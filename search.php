@@ -214,10 +214,8 @@ if ($origin === '' && $destination === '' && $date === '' && $class === '') {
                   <th>Rute</th>
                   <th>Berangkat</th>
                   <th>Tiba</th>
-                  <th>Durasi</th>
                   <th>Kelas</th>
                   <th>Harga</th>
-                  <th>Kursi</th>
                   <th>Status</th>
                   <th>Aksi</th>
                 </tr>
@@ -276,10 +274,8 @@ if ($origin === '' && $destination === '' && $date === '' && $class === '') {
                     <td><?= htmlspecialchars($originName . ' - ' . $destName) ?><br><small><?= htmlspecialchars($dateStr) ?></small></td>
                     <td><strong><?= htmlspecialchars($depTime) ?></strong></td>
                     <td><strong><?= htmlspecialchars($arrTime) ?></strong></td>
-                    <td><?= htmlspecialchars($duration) ?></td>
                     <td><?= htmlspecialchars(implode(', ', $classes)) ?></td>
                     <td>Rp <?= number_format($price,0,',','.') ?></td>
-                    <td><?= htmlspecialchars($seats !== null ? $seats : 'N/A') ?></td>
                     <td>
                       <?php $status = ($dep && $dep > time()) ? 'Aktif' : 'Selesai';
                       if (strtolower($status) === 'aktif'): ?>
@@ -290,11 +286,18 @@ if ($origin === '' && $destination === '' && $date === '' && $class === '') {
                     </td>
                     <td>
                       <?php if ($scheduleId > 0): ?>
-                        <form method="get" action="booking.php" style="display:inline; margin:0;">
-                          <input type="hidden" name="schedule_id" value="<?= htmlspecialchars($scheduleId) ?>">
-                          <input type="hidden" name="from" value="search">
-                          <button type="submit" class="btn btn-sm btn-primary">Pilih</button>
-                        </form>
+                        <button type="button" class="btn btn-sm btn-primary open-seats-btn"
+                          data-bs-toggle="modal" data-bs-target="#seatModal"
+                          data-schedule-id="<?= htmlspecialchars($scheduleId) ?>"
+                          data-train-name="<?= htmlspecialchars($trainName) ?>"
+                          data-origin="<?= htmlspecialchars($originName) ?>"
+                          data-destination="<?= htmlspecialchars($destName) ?>"
+                          data-departure="<?= htmlspecialchars($r['departure_time']) ?>"
+                          data-arrival="<?= htmlspecialchars($r['arrival_time']) ?>"
+                          data-price="<?= htmlspecialchars($price) ?>"
+                          data-classes="<?= htmlspecialchars(implode(',', $classes)) ?>"
+                          data-seats="<?= htmlspecialchars($seats !== null ? $seats : 0) ?>"
+                        >Pilih</button>
                       <?php else: ?>
                         <button class="btn btn-sm btn-secondary" disabled>—</button>
                       <?php endif; ?>
@@ -309,6 +312,195 @@ if ($origin === '' && $destination === '' && $date === '' && $class === '') {
     </div>
   </div>
 
+  <!-- Seat selection modal -->
+  <div class="modal fade" id="seatModal" tabindex="-1" aria-labelledby="seatModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="seatModalLabel">Pilih Kursi</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="seatDetails" class="mb-3">
+            <!-- populated by JS -->
+          </div>
+          <div id="seatMap" class="d-flex flex-wrap gap-2" style="min-height:160px;">
+            <!-- seat buttons inserted here -->
+          </div>
+          <p class="mt-3 text-muted small">Klik kursi untuk memilih. Anda dapat memilih lebih dari 1 kursi.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="button" id="confirmSeat" class="btn btn-primary" disabled>Konfirmasi & Lanjut</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    (function(){
+      const seatModal = document.getElementById('seatModal');
+      let selectedSeats = new Set();
+
+      seatModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const scheduleId = button.getAttribute('data-schedule-id');
+        const trainName = button.getAttribute('data-train-name');
+        const origin = button.getAttribute('data-origin');
+        const destination = button.getAttribute('data-destination');
+        const departure = button.getAttribute('data-departure');
+        const arrival = button.getAttribute('data-arrival');
+        const price = button.getAttribute('data-price');
+        const classes = button.getAttribute('data-classes');
+        const seats = parseInt(button.getAttribute('data-seats') || '0', 10) || 40;
+
+        // Populate details
+        const details = document.getElementById('seatDetails');
+        details.innerHTML = '<strong>'+escapeHtml(trainName)+'</strong> — '+escapeHtml(origin)+' → '+escapeHtml(destination)+'<br>'+
+          'Berangkat: ' + new Date(departure).toLocaleString() + ' • Tiba: ' + new Date(arrival).toLocaleTimeString() + '<br>'+
+          'Kelas: ' + escapeHtml(classes) + ' • Harga: Rp ' + Number(price).toLocaleString();
+
+        // Render seat map as 4 rows (2 left, aisle, 2 right) with 20 seats per row (total 80)
+        const map = document.getElementById('seatMap');
+        map.innerHTML = '';
+        const availableSeats = parseInt(seats, 10) || 0;
+        const rowsPerSide = 2;
+        const seatsPerRow = 20;
+        const totalSeats = rowsPerSide * 2 * seatsPerRow; // 80
+
+        function createSeatButton(num){
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'btn btn-outline-secondary seat-btn';
+          btn.style.width = '56px';
+          btn.style.height = '56px';
+          btn.style.display = 'inline-flex';
+          btn.style.alignItems = 'center';
+          btn.style.justifyContent = 'center';
+          btn.style.padding = '6px';
+          btn.dataset.seat = num;
+          btn.innerHTML = '<div style="display:flex;align-items:center;gap:6px"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="10" rx="2"></rect><path d="M7 7V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"></path></svg><div style="font-size:11px">'+num+'</div></div>';
+          if (num > availableSeats) {
+            btn.classList.add('disabled');
+            btn.disabled = true;
+            btn.title = 'Tidak tersedia';
+            btn.style.opacity = '0.45';
+          }
+          btn.addEventListener('click', function(){
+            if (btn.disabled || btn.classList.contains('booked')) return;
+            const n = btn.dataset.seat;
+            if (selectedSeats.has(n)) {
+              selectedSeats.delete(n);
+              btn.classList.remove('selected');
+              btn.classList.remove('btn-primary');
+              btn.classList.add('btn-outline-secondary');
+            } else {
+              selectedSeats.add(n);
+              btn.classList.add('selected');
+              btn.classList.remove('btn-outline-secondary');
+              btn.classList.add('btn-primary');
+            }
+            document.getElementById('confirmSeat').disabled = selectedSeats.size === 0;
+          });
+          return btn;
+        }
+
+        // Build seat map as 20 vertical blocks (each block = 2 seats side-by-side)
+        // Display blocks 1..10 in the left column and blocks 11..20 in the right column
+        const totalBlocks = 20;
+        const blocksPerColumn = 10;
+        const seatsPerBlock = 2;
+        let seatCounter = 1;
+
+        const container = document.createElement('div');
+        container.className = 'd-flex gap-4';
+
+        const leftCol = document.createElement('div');
+        leftCol.className = 'd-flex flex-column gap-3';
+        for (let b = 0; b < blocksPerColumn; b++){
+          const block = document.createElement('div');
+          block.className = 'd-flex gap-2 align-items-center';
+          for (let s = 0; s < seatsPerBlock; s++){
+            block.appendChild(createSeatButton(seatCounter));
+            seatCounter++;
+          }
+          leftCol.appendChild(block);
+        }
+
+        const rightCol = document.createElement('div');
+        rightCol.className = 'd-flex flex-column gap-3';
+        for (let b = 0; b < blocksPerColumn; b++){
+          const block = document.createElement('div');
+          block.className = 'd-flex gap-2 align-items-center';
+          for (let s = 0; s < seatsPerBlock; s++){
+            block.appendChild(createSeatButton(seatCounter));
+            seatCounter++;
+          }
+          rightCol.appendChild(block);
+        }
+
+        // assemble two columns and enable vertical scrolling
+        container.appendChild(leftCol);
+        const spacer = document.createElement('div'); spacer.style.width = '20px'; container.appendChild(spacer);
+        container.appendChild(rightCol);
+        map.style.maxHeight = '520px';
+        map.style.overflowY = 'auto';
+        map.appendChild(container);
+
+        // fetch already booked seats for this schedule and mark them
+        (function markBooked(){
+          const bookedUrl = 'get_booked_seats.php?schedule_id=' + encodeURIComponent(scheduleId);
+          fetch(bookedUrl).then(r=>{
+            if (!r.ok) return [];
+            return r.json();
+          }).then(data=>{
+            if (!Array.isArray(data)) return;
+            data.forEach(function(s){
+              const btn = map.querySelector('.seat-btn[data-seat="'+s+'"]');
+              if (btn) {
+                btn.classList.add('booked');
+                btn.classList.remove('btn-outline-secondary');
+                btn.classList.add('btn-danger');
+                btn.disabled = true;
+                btn.title = 'Sudah dibooking';
+              }
+            });
+          }).catch(()=>{});
+        })();
+
+        // attach confirm handler (store scheduleId in dataset)
+        const confirm = document.getElementById('confirmSeat');
+        confirm.dataset.scheduleId = scheduleId;
+        confirm.onclick = function(){
+          if (selectedSeats.size === 0) return;
+          // create form and submit GET to booking.php with selected_seats[] so user can fill passenger data
+          const f = document.createElement('form');
+          f.method = 'get';
+          f.action = 'booking.php';
+          const si = document.createElement('input'); si.type='hidden'; si.name='schedule_id'; si.value = scheduleId; f.appendChild(si);
+          const from = document.createElement('input'); from.type='hidden'; from.name='from'; from.value='search'; f.appendChild(from);
+          selectedSeats.forEach(function(seat){
+            const inp = document.createElement('input'); inp.type='hidden'; inp.name='selected_seats[]'; inp.value = seat; f.appendChild(inp);
+          });
+          document.body.appendChild(f);
+          f.submit();
+        };
+
+        // reset selection state when modal is closed
+        selectedSeats.clear();
+        document.getElementById('confirmSeat').disabled = true;
+      });
+
+      function escapeHtml(text){
+        return String(text)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+    })();
+  </script>
 </body>
 </html>
