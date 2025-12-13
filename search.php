@@ -1,83 +1,7 @@
 <?php
-// Simple server-side search page for train schedules
-// Data sample - in production this should come from a database
-$schedules = [
-    [
-        'id' => 1,
-        'name' => 'Argo Bromo Anggrek',
-        'route' => 'Jakarta - Surabaya',
-        'origin' => 'Jakarta',
-        'destination' => 'Surabaya',
-        'date' => '2025-12-05',
-        'departure' => '18:00',
-        'arrival' => '06:30',
-        'duration' => '12h 30m',
-        'class' => 'Eksekutif',
-        'price' => 450000,
-        'seats' => 25,
-        'status' => 'Aktif'
-    ],
-    [
-        'id' => 2,
-        'name' => 'Bima',
-        'route' => 'Jakarta - Surabaya',
-        'origin' => 'Jakarta',
-        'destination' => 'Surabaya',
-        'date' => '2025-12-05',
-        'departure' => '20:00',
-        'arrival' => '08:00',
-        'duration' => '12h',
-        'class' => 'Bisnis',
-        'price' => 350000,
-        'seats' => 15,
-        'status' => 'Aktif'
-    ],
-    [
-        'id' => 3,
-        'name' => 'Gajayana',
-        'route' => 'Jakarta - Malang',
-        'origin' => 'Jakarta',
-        'destination' => 'Malang',
-        'date' => '2025-12-05',
-        'departure' => '08:15',
-        'arrival' => '14:45',
-        'duration' => '6h 30m',
-        'class' => 'Ekonomi',
-        'price' => 150000,
-        'seats' => 40,
-        'status' => 'Aktif'
-    ],
-    [
-        'id' => 4,
-        'name' => 'Eksekutif Brantas',
-        'route' => 'Bandung - Yogyakarta',
-        'origin' => 'Bandung',
-        'destination' => 'Yogyakarta',
-        'date' => '2025-12-05',
-        'departure' => '10:00',
-        'arrival' => '15:30',
-        'duration' => '5h 30m',
-        'class' => 'Eksekutif',
-        'price' => 280000,
-        'seats' => 10,
-        'status' => 'Tunda'
-    ],
-    [
-        'id' => 5,
-        'name' => 'Mutiara Timur',
-        'route' => 'Semarang - Jakarta',
-        'origin' => 'Semarang',
-        'destination' => 'Jakarta',
-        'date' => '2025-12-05',
-        'departure' => '22:00',
-        'arrival' => '04:00',
-        'duration' => '6h',
-        'class' => 'Premium',
-        'price' => 520000,
-        'seats' => 8,
-        'status' => 'Aktif'
-    ]
-];
+// Search page for train schedules backed by database
+// Include DB config (expects `db_config.php` with $conn or get_db_connection())
+include_once 'db_config.php';
 
 // Get search params (use GET so clicking link or form submit works)
 $origin = isset($_GET['origin']) ? trim($_GET['origin']) : '';
@@ -87,20 +11,98 @@ $class = isset($_GET['class']) ? trim($_GET['class']) : '';
 
 $results = [];
 if ($origin === '' && $destination === '' && $date === '' && $class === '') {
-    // no search yet
-    $results = null; // null means not searched
+  // no search yet
+  $results = null; // null means not searched
 } else {
-    // filter schedules
-    foreach ($schedules as $s) {
-        $matchOrigin = $origin === '' || stripos($s['origin'], $origin) !== false || stripos($s['route'], $origin) !== false;
-        $matchDestination = $destination === '' || stripos($s['destination'], $destination) !== false || stripos($s['route'], $destination) !== false;
-        $matchDate = $date === '' || $s['date'] === $date;
-        $matchClass = $class === '' || strcasecmp($s['class'], $class) === 0;
+  // Build dynamic WHERE clause using station joins
+  $where = [];
+  $types = '';
+  $values = [];
 
-        if ($matchOrigin && $matchDestination && $matchDate && $matchClass) {
-            $results[] = $s;
+  if ($origin !== '') {
+    $where[] = "(o.station_name LIKE ? OR o.code LIKE ? OR o.city LIKE ? )";
+    $types .= 'sss';
+    $values[] = "%$origin%";
+    $values[] = "%$origin%";
+    $values[] = "%$origin%";
+  }
+
+  if ($destination !== '') {
+    $where[] = "(d.station_name LIKE ? OR d.code LIKE ? OR d.city LIKE ? )";
+    $types .= 'sss';
+    $values[] = "%$destination%";
+    $values[] = "%$destination%";
+    $values[] = "%$destination%";
+  }
+
+  if ($date !== '') {
+    $where[] = "DATE(s.departure_time) = ?";
+    $types .= 's';
+    $values[] = $date;
+  }
+
+  // Base query: join schedules -> trains -> stations (origin/destination)
+  $sql = "SELECT s.schedule_id, s.train_id, t.train_name, o.station_name AS origin_name, d.station_name AS destination_name, s.departure_time, s.arrival_time, s.price FROM `schedules` s JOIN `trains` t ON s.train_id = t.train_id LEFT JOIN `stations` o ON s.origin_station_id = o.station_id LEFT JOIN `stations` d ON s.destination_station_id = d.station_id";
+
+  if (!empty($where)) {
+    $sql .= ' WHERE ' . implode(' AND ', $where);
+  }
+  $sql .= " ORDER BY s.departure_time ASC LIMIT 500";
+
+  $conn = function_exists('get_db_connection') ? get_db_connection() : (isset($conn) ? $conn : null);
+  if (!$conn) {
+    $results = [];
+    error_log('Database connection not available in search.php');
+  } else {
+    $stmt = $conn->prepare($sql);
+    if ($stmt) {
+      if (!empty($values)) {
+        // bind_param requires references and first arg is types string
+        $bind_names = [];
+        $bind_names[] = $types;
+        for ($i = 0; $i < count($values); $i++) {
+          $bindVar = 'bind' . $i;
+          $$bindVar = $values[$i];
+          $bind_names[] = &$$bindVar;
         }
+        call_user_func_array([$stmt, 'bind_param'], $bind_names);
+      }
+
+      $stmt->execute();
+      $res = $stmt->get_result();
+      if ($res) {
+        while ($row = $res->fetch_assoc()) {
+          $results[] = $row;
+        }
+      }
+      $stmt->close();
+
+      // If class filter requested, remove schedules whose trains don't have that class in carriages
+      if ($class !== '' && !empty($results)) {
+        $filtered = [];
+        $chkStmt = $conn->prepare("SELECT 1 FROM `carriages` WHERE train_id = ? AND name LIKE ? LIMIT 1");
+        foreach ($results as $r) {
+          $has = false;
+          if ($chkStmt) {
+            $like = "%$class%";
+            $tid = (int)$r['train_id'];
+            $chkStmt->bind_param('is', $tid, $like);
+            $chkStmt->execute();
+            $g = $chkStmt->get_result();
+            if ($g && $g->fetch_row()) {
+              $has = true;
+            }
+          }
+          if ($has) $filtered[] = $r;
+        }
+        if ($chkStmt) $chkStmt->close();
+        $results = $filtered;
+      }
+    } else {
+      error_log('Prepare failed in search.php: ' . $conn->error);
+      $results = [];
     }
+  }
 }
 ?>
 <!doctype html>
@@ -221,28 +223,81 @@ if ($origin === '' && $destination === '' && $date === '' && $class === '') {
                 </tr>
               </thead>
               <tbody>
-                <?php foreach ($results as $r): ?>
+                <?php foreach ($results as $r):
+                  // compute display fields
+                  $trainName = isset($r['train_name']) ? $r['train_name'] : 'N/A';
+                  // Ensure schedule_id is an integer
+                  $scheduleId = isset($r['schedule_id']) ? (int)$r['schedule_id'] : 0;
+                  $originName = isset($r['origin_name']) ? $r['origin_name'] : '';
+                  $destName = isset($r['destination_name']) ? $r['destination_name'] : '';
+                  $dep = isset($r['departure_time']) ? strtotime($r['departure_time']) : null;
+                  $arr = isset($r['arrival_time']) ? strtotime($r['arrival_time']) : null;
+                  $dateStr = $dep ? date('Y-m-d', $dep) : '';
+                  $depTime = $dep ? date('H:i', $dep) : '';
+                  $arrTime = $arr ? date('H:i', $arr) : '';
+                  $duration = '';
+                  if ($dep && $arr) {
+                    $i1 = new DateTime($r['departure_time']);
+                    $i2 = new DateTime($r['arrival_time']);
+                    $iv = $i1->diff($i2);
+                    $duration = ($iv->d ? $iv->d . 'd ' : '') . ($iv->h ? $iv->h . 'h ' : '') . ($iv->i ? $iv->i . 'm' : '');
+                  }
+                  $price = isset($r['price']) ? $r['price'] : 0;
+
+                  // get classes and seats for this train
+                  $classes = [];
+                  $seats = null;
+                  if (isset($conn) && $conn) {
+                    $cstmt = $conn->prepare("SELECT name, capacity FROM carriages WHERE train_id = ?");
+                    if ($cstmt) {
+                      $tid = (int)$r['train_id'];
+                      $cstmt->bind_param('i', $tid);
+                      $cstmt->execute();
+                      $cres = $cstmt->get_result();
+                      $totalSeats = 0;
+                      while ($crow = $cres->fetch_assoc()) {
+                        $name = $crow['name'];
+                        // derive class from carriage name (first word)
+                        $parts = preg_split('/\s+/', trim($name));
+                        if (!empty($parts)) $classes[] = $parts[0];
+                        $totalSeats += (int)$crow['capacity'];
+                      }
+                      $seats = $totalSeats;
+                      $classes = array_values(array_unique($classes));
+                      $cstmt->close();
+                    }
+                  }
+                ?>
                   <tr>
                     <td>
-                      <strong><?= htmlspecialchars($r['name']) ?></strong><br>
-                      <small>No: <?= $r['id'] ?></small>
+                      <strong><?= htmlspecialchars($trainName) ?></strong><br>
+                      <small>No: <?= htmlspecialchars($scheduleId) ?></small>
                     </td>
-                    <td><?= htmlspecialchars($r['route']) ?><br><small><?= htmlspecialchars($r['date']) ?></small></td>
-                    <td><strong><?= htmlspecialchars($r['departure']) ?></strong></td>
-                    <td><strong><?= htmlspecialchars($r['arrival']) ?></strong></td>
-                    <td><?= htmlspecialchars($r['duration']) ?></td>
-                    <td><?= htmlspecialchars($r['class']) ?></td>
-                    <td>Rp <?= number_format($r['price'],0,',','.') ?></td>
-                    <td><?= htmlspecialchars($r['seats']) ?></td>
+                    <td><?= htmlspecialchars($originName . ' - ' . $destName) ?><br><small><?= htmlspecialchars($dateStr) ?></small></td>
+                    <td><strong><?= htmlspecialchars($depTime) ?></strong></td>
+                    <td><strong><?= htmlspecialchars($arrTime) ?></strong></td>
+                    <td><?= htmlspecialchars($duration) ?></td>
+                    <td><?= htmlspecialchars(implode(', ', $classes)) ?></td>
+                    <td>Rp <?= number_format($price,0,',','.') ?></td>
+                    <td><?= htmlspecialchars($seats !== null ? $seats : 'N/A') ?></td>
                     <td>
-                      <?php if (strtolower($r['status']) === 'aktif'): ?>
-                        <span class="status-active"><?= htmlspecialchars($r['status']) ?></span>
+                      <?php $status = ($dep && $dep > time()) ? 'Aktif' : 'Selesai';
+                      if (strtolower($status) === 'aktif'): ?>
+                        <span class="status-active"><?= htmlspecialchars($status) ?></span>
                       <?php else: ?>
-                        <span class="status-delayed"><?= htmlspecialchars($r['status']) ?></span>
+                        <span class="status-delayed"><?= htmlspecialchars($status) ?></span>
                       <?php endif; ?>
                     </td>
                     <td>
-                      <a href="booking.php?train_id=<?= $r['id'] ?>" class="btn btn-sm btn-success">Pesan</a>
+                      <?php if ($scheduleId > 0): ?>
+                        <form method="get" action="booking.php" style="display:inline; margin:0;">
+                          <input type="hidden" name="schedule_id" value="<?= htmlspecialchars($scheduleId) ?>">
+                          <input type="hidden" name="from" value="search">
+                          <button type="submit" class="btn btn-sm btn-primary">Pilih</button>
+                        </form>
+                      <?php else: ?>
+                        <button class="btn btn-sm btn-secondary" disabled>—</button>
+                      <?php endif; ?>
                     </td>
                   </tr>
                 <?php endforeach; ?>
