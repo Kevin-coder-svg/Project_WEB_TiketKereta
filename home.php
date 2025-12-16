@@ -38,12 +38,7 @@ $userEmail = $_SESSION['email'] ?? '';
 
     .navbar-brand {
       font-size: 1.5rem;
-      transition: opacity 0.2s;
       margin-left: 0 !important;
-    }
-
-    .navbar-brand:hover {
-      opacity: 0.8;
     }
 
     /* Sidebar Styles */
@@ -55,7 +50,8 @@ $userEmail = $_SESSION['email'] ?? '';
       height: 100vh;
       background: linear-gradient(180deg, rgba(0, 0, 0, 0.95) 0%, rgba(13, 110, 253, 0.1) 100%);
       transition: left 0.3s ease;
-      z-index: 1000;
+      /* PERBAIKAN: z-index ditingkatkan agar di atas navbar */
+      z-index: 2000;
       overflow-y: auto;
       border-right: 2px solid #0d6efd;
       padding-top: 20px;
@@ -114,10 +110,6 @@ $userEmail = $_SESSION['email'] ?? '';
       margin-right: 15px;
     }
 
-    .sidebar-toggle:hover {
-      color: #0d6efd;
-    }
-
     /* Overlay */
     .sidebar-overlay {
       position: fixed;
@@ -127,98 +119,83 @@ $userEmail = $_SESSION['email'] ?? '';
       height: 100%;
       background: rgba(0, 0, 0, 0.5);
       display: none;
-      z-index: 999;
+      /* PERBAIKAN: z-index di bawah sidebar tapi di atas konten lain */
+      z-index: 1999;
     }
 
     .sidebar-overlay.active {
       display: block;
     }
 
-    .nav-link {
-      margin: 0 5px;
-      transition: all 0.2s;
-      font-weight: 500;
-    }
-
-    .nav-link:hover {
-      color: #0d6efd !important;
-      transform: translateY(-2px);
-    }
-
-    .nav-link.active {
-      color: #0d6efd !important;
-      border-bottom: 2px solid #0d6efd;
-    }
-
-    .dropdown-menu {
-      background-color: rgba(0, 0, 0, 0.95);
-      border: 1px solid #0d6efd;
-      border-radius: 6px;
-    }
-
-    .dropdown-item {
-      color: white;
-      transition: all 0.2s;
-    }
-
-    .dropdown-item:hover {
-      background-color: #0d6efd;
-      color: white;
-    }
-
+    /* Content Styling */
     .content-section {
       background-color: rgba(255, 255, 255, 0.95);
-      border-radius: 8px;
-      padding: 30px;
-      margin-top: 30px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      border-radius: 12px;
+      padding: 40px;
+      margin-top: 40px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
     }
 
     .welcome-card {
       background: linear-gradient(135deg, #0b5ed7 0%, #0d6efd 100%);
       color: white;
-      border-radius: 8px;
-      padding: 30px;
-      margin-bottom: 20px;
+      border-radius: 12px;
+      padding: 40px;
+      margin-bottom: 30px;
+      box-shadow: 0 4px 15px rgba(13, 110, 253, 0.3);
+      text-align: center;
     }
 
     .feature-card {
+      background: #fff;
       border: 1px solid #e9ecef;
-      border-radius: 8px;
-      padding: 20px;
-      margin-bottom: 15px;
-      transition: transform 0.2s, box-shadow 0.2s;
+      border-radius: 12px;
+      padding: 25px;
+      transition: all 0.3s ease;
+      height: 100%;
+      text-align: center;
     }
 
     .feature-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
-    }
-    .feature-link {
-    text-decoration: none;
-    color: inherit;
-    display: block;
+      transform: translateY(-8px);
+      border-color: #0d6efd;
+      box-shadow: 0 10px 25px rgba(13, 110, 253, 0.15);
     }
 
-    .feature-link:hover {
-    color: inherit;
+    .feature-card h5 {
+        margin-top: 10px;
+        margin-bottom: 15px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .feature-link {
+        text-decoration: none;
+        color: inherit;
+        display: block;
+        height: 100%;
+    }
+
+    .footer {
+        text-align: center;
+        color: white;
+        margin-top: 50px;
+        padding: 20px;
+        background-color: rgba(0, 0, 0, 0.8);
     }
   </style>
 </head>
 
 <body>
-  <!-- Sidebar Overlay -->
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-  <!-- Sidebar -->
   <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
       ☰ Menu
     </div>
     <ul class="sidebar-menu">
       <li><a href="home.php" class="active">🏠 Home</a></li>
-      <li><a href="search.php">🔍 Cari Jadwal</a></li>
-      <li><a href="booking.php">🎫 Pesan Tiket</a></li>
+      <li><a href="search.php">📅 Cari Jadwal</a></li>
       <li><a href="history.php">📋 Riwayat Pemesanan</a></li>
       <li><a href="profile.php">👤 Profil Saya</a></li>
       <li><a href="QnA.php">💭 QnA</a></li>
@@ -226,7 +203,6 @@ $userEmail = $_SESSION['email'] ?? '';
     </ul>
   </div>
 
-  <!-- Navigation -->
   <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
     <div class="container-fluid">
       <button class="sidebar-toggle" id="sidebarToggle" type="button">
@@ -238,75 +214,68 @@ $userEmail = $_SESSION['email'] ?? '';
     </div>
   </nav>
 
-  <!-- Main Content -->
   <div class="container">
     <div class="content-section">
-      <!-- Welcome Card -->
       <div class="welcome-card">
-        <h1>Selamat Datang, <?php echo htmlspecialchars($userName); ?>!</h1>
-        <p class="mb-0">Nikmati kemudahan dalam memesan tiket kereta online.</p>
+        <h1 class="fw-bold">Selamat Datang, <?php echo htmlspecialchars($userName); ?>!</h1>
+        <p class="lead mb-2">Mau pergi ke mana hari ini?</p>
         <?php if ($userEmail): ?>
-          <small class="text-light">Email: <?php echo htmlspecialchars($userEmail); ?></small>
+          <small style="opacity: 0.8;">Masuk sebagai: <?php echo htmlspecialchars($userEmail); ?></small>
         <?php endif; ?>
       </div>
 
-      <!-- Features -->
-      <h3 class="mb-4">Fitur Tersedia</h3>
-      <div class="row g-3">
-        <div class="col-lg-3 col-md-6 col-sm-12">
+      <h4 class="mb-4 text-center fw-bold text-secondary">Layanan Kami</h4>
+      <div class="row g-4 justify-content-center">
+        
+        <div class="col-lg-4 col-md-6 col-sm-12">
             <a href="search.php" class="feature-link">
-                <div class="feature-card h-100">
-                    <h5>📅 Cari Jadwal Kereta</h5>
-                    <p class="text-muted mb-0">
-                    Lihat jadwal kereta dari berbagai rute dan pilih yang sesuai dengan kebutuhan Anda.
+                <div class="feature-card">
+                    <div class="display-4 mb-3">📅</div>
+                    <h5>Cari Jadwal Kereta</h5>
+                    <p class="text-muted">
+                    Cek ketersediaan kursi dan jadwal keberangkatan ke berbagai tujuan.
                     </p>
                 </div>
             </a>
         </div>
-        <div class="col-lg-3 col-md-6 col-sm-12">
-            <a href="booking.php" class="feature-link">
-                <div class="feature-card h-100">
-                    <h5>🎫 Pesan Tiket</h5>
-                    <p class="text-muted mb-0">
-                    Pesan tiket dengan mudah dan dapatkan konfirmasi langsung ke email Anda.
-                    </p>
-                </div>
-            </a>
-        </div>
-        <div class="col-lg-3 col-md-6 col-sm-12">
+
+        <div class="col-lg-4 col-md-6 col-sm-12">
             <a href="history.php" class="feature-link">
-                <div class="feature-card h-100">
-                    <h5>📋 Riwayat Pemesanan</h5>
-                    <p class="text-muted mb-0">
-                    Kelola dan lihat semua riwayat pemesanan tiket Anda.
+                <div class="feature-card">
+                    <div class="display-4 mb-3">📋</div>
+                    <h5>Riwayat Pemesanan</h5>
+                    <p class="text-muted">
+                    Lihat status pembayaran dan tiket elektronik perjalanan Anda sebelumnya.
                     </p>
                 </div>
             </a>
         </div>
-        <div class="col-lg-3 col-md-6 col-sm-12">
+
+        <div class="col-lg-4 col-md-6 col-sm-12">
             <a href="QnA.php" class="feature-link">
-                <div class="feature-card h-100">
-                    <h5>💭 QnA</h5>
-                    <p class="text-muted mb-0">
-                    Ajukan pertanyaan dan lihat jawaban seputar layanan kereta.
+                <div class="feature-card">
+                    <div class="display-4 mb-3">💭</div>
+                    <h5>Pusat Bantuan (QnA)</h5>
+                    <p class="text-muted">
+                    Temukan jawaban atas pertanyaan umum seputar layanan kereta api.
                     </p>
                 </div>
             </a>
         </div>
       </div>
 
-      <!-- Quick Actions -->
-      <div class="mt-5 pt-4 border-top">
-        <h4 class="mb-3">Aksi Cepat</h4>
-        <a href="search.php" class="btn btn-primary me-2">Cari Jadwal</a>
-        <a href="history.php" class="btn btn-outline-primary">Lihat Pemesanan</a>
+      <div class="mt-5 pt-4 border-top text-center">
+        <h5 class="mb-3 text-muted">Aksi Cepat</h5>
+        <div class="d-flex justify-content-center gap-3">
+            <a href="search.php" class="btn btn-primary btn-lg px-4">Mulai Pencarian</a>
+            <a href="profile.php" class="btn btn-outline-secondary btn-lg px-4">Profil Saya</a>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Footer -->
-  <footer class="text-center text-white mt-5 py-4" style="background-color: rgba(0, 0, 0, 0.8);">
-    <p>&copy; 2025 PT. KAI (Persero). All rights reserved.</p>
+  <footer class="footer">
+    <p class="mb-0">&copy; 2025 PT. KAI (Persero). All rights reserved.</p>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"

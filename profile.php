@@ -2,18 +2,18 @@
 // profile.php - User Profile Page
 
 session_start();
-require 'db_config.php';
+// require 'db_config.php'; // Aktifkan jika file ini ada
+// Koneksi Manual (Fallback)
+$conn = new mysqli('localhost', 'root', '', 'tiket kereta');
+
+if ($conn->connect_error) {
+    die('Koneksi database gagal: ' . $conn->connect_error);
+}
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
     header('Location: HTML_login.html');
     exit;
-}
-
-$conn = new mysqli('localhost', 'root', '', 'tiket kereta');
-
-if ($conn->connect_error) {
-    die('Koneksi database gagal: ' . $conn->connect_error);
 }
 
 $user_id = $_SESSION['user_id'];
@@ -47,11 +47,13 @@ $conn->close();
             background-image: url('background.jpg');
             background-size: cover;
             background-attachment: fixed;
+            background-color: #f4f6f8; /* Fallback color */
             min-height: 100vh;
             margin: 0;
             padding: 0;
         }
 
+        /* Navbar Styles */
         .navbar {
             background: linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(13, 110, 253, 0.2) 100%) !important;
             border-bottom: 3px solid #0d6efd;
@@ -61,12 +63,7 @@ $conn->close();
 
         .navbar-brand {
             font-size: 1.5rem;
-            transition: opacity 0.2s;
             margin-left: 0 !important;
-        }
-
-        .navbar-brand:hover {
-            opacity: 0.8;
         }
 
         /* Sidebar Styles */
@@ -78,7 +75,8 @@ $conn->close();
             height: 100vh;
             background: linear-gradient(180deg, rgba(0, 0, 0, 0.95) 0%, rgba(13, 110, 253, 0.1) 100%);
             transition: left 0.3s ease;
-            z-index: 1000;
+            /* PERBAIKAN: z-index ditingkatkan agar di atas navbar (1020) */
+            z-index: 2000; 
             overflow-y: auto;
             border-right: 2px solid #0d6efd;
             padding-top: 20px;
@@ -137,10 +135,6 @@ $conn->close();
             margin-right: 15px;
         }
 
-        .sidebar-toggle:hover {
-            color: #0d6efd;
-        }
-
         /* Overlay */
         .sidebar-overlay {
             position: fixed;
@@ -150,19 +144,24 @@ $conn->close();
             height: 100%;
             background: rgba(0, 0, 0, 0.5);
             display: none;
-            z-index: 999;
+            /* PERBAIKAN: z-index di bawah sidebar tapi di atas konten lain */
+            z-index: 1999; 
         }
 
         .sidebar-overlay.active {
             display: block;
         }
 
+        /* Profile Specific Styles */
         .profile-container {
             background-color: rgba(255, 255, 255, 0.95);
             border-radius: 12px;
             padding: 40px;
             margin-top: 30px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            max-width: 800px; /* Batasi lebar agar rapi */
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .profile-header {
@@ -190,7 +189,7 @@ $conn->close();
             font-size: 2rem;
             font-weight: bold;
             color: #333;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
 
         .profile-role {
@@ -223,16 +222,16 @@ $conn->close();
         }
 
         .info-label {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: #666;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 8px;
-            font-weight: 600;
+            font-weight: 700;
         }
 
         .info-value {
-            font-size: 1.2rem;
+            font-size: 1.15rem;
             color: #333;
             font-weight: 500;
             word-break: break-all;
@@ -254,12 +253,12 @@ $conn->close();
             transition: all 0.3s;
             text-decoration: none;
             display: inline-block;
+            border: none;
         }
 
         .btn-edit {
             background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
             color: white;
-            border: none;
         }
 
         .btn-edit:hover {
@@ -271,7 +270,6 @@ $conn->close();
         .btn-back {
             background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
             color: white;
-            border: none;
         }
 
         .btn-back:hover {
@@ -283,8 +281,8 @@ $conn->close();
         .member-since {
             text-align: center;
             color: #999;
-            font-size: 0.95rem;
-            margin-top: 20px;
+            font-size: 0.9rem;
+            margin-top: 30px;
             padding-top: 20px;
             border-top: 1px solid #e9ecef;
         }
@@ -300,26 +298,21 @@ $conn->close();
 </head>
 
 <body>
-    <!-- Sidebar Overlay -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             ☰ Menu
         </div>
         <ul class="sidebar-menu">
             <li><a href="home.php">🏠 Home</a></li>
-            <li><a href="search.php">🔍 Cari Jadwal</a></li>
-            <li><a href="booking.php">🎫 Pesan Tiket</a></li>
+            <li><a href="search.php">📅 Cari Jadwal</a></li>
             <li><a href="history.php">📋 Riwayat Pemesanan</a></li>
-            <li><a href="profile.php" class="active">👤 Profil Saya</a></li>
-            <li><a href="settings.php">⚙️ Pengaturan</a></li>
+            <li><a href="profile.php" class="active">👤 Profil Saya</a></li> <li><a href="QnA.php">💭 QnA</a></li>
             <li><a href="logout.php" style="color: #ff6b6b;">🚪 Logout</a></li>
         </ul>
     </div>
 
-    <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
         <div class="container-fluid">
             <button class="sidebar-toggle" id="sidebarToggle" type="button">
@@ -331,10 +324,8 @@ $conn->close();
         </div>
     </nav>
 
-    <!-- Main Content -->
     <div class="container">
         <div class="profile-container">
-            <!-- Profile Header -->
             <div class="profile-header">
                 <div class="profile-avatar">
                     👤
@@ -343,7 +334,6 @@ $conn->close();
                 <div class="profile-role"><?php echo htmlspecialchars($user['role']); ?></div>
             </div>
 
-            <!-- Profile Information -->
             <div class="profile-info">
                 <div class="info-card">
                     <div class="info-label">🆔 User ID</div>
@@ -357,41 +347,38 @@ $conn->close();
 
                 <div class="info-card">
                     <div class="info-label">📧 Email</div>
-                    <div class="info-value"><?php echo htmlspecialchars($user['email'] ?? 'Tidak tersedia'); ?></div>
+                    <div class="info-value"><?php echo htmlspecialchars($user['email'] ?? '-'); ?></div>
                 </div>
 
                 <div class="info-card">
                     <div class="info-label">📱 Nomor Telepon</div>
-                    <div class="info-value"><?php echo htmlspecialchars($user['phone'] ?? 'Tidak tersedia'); ?></div>
+                    <div class="info-value"><?php echo htmlspecialchars($user['phone'] ?? '-'); ?></div>
                 </div>
 
                 <div class="info-card">
                     <div class="info-label">📍 Alamat</div>
-                    <div class="info-value"><?php echo htmlspecialchars($user['alamat'] ?? 'Tidak tersedia'); ?></div>
+                    <div class="info-value"><?php echo htmlspecialchars($user['alamat'] ?? '-'); ?></div>
                 </div>
 
                 <div class="info-card">
                     <div class="info-label">📅 Bergabung Sejak</div>
-                    <div class="info-value"><?php echo isset($user['created_at']) && !empty($user['created_at']) ? date('d F Y', strtotime($user['created_at'])) : 'Tidak tersedia'; ?></div>
+                    <div class="info-value"><?php echo isset($user['created_at']) && !empty($user['created_at']) ? date('d F Y', strtotime($user['created_at'])) : '-'; ?></div>
                 </div>
             </div>
 
-            <!-- Action Buttons -->
             <div class="action-buttons">
                 <a href="edit_profile.php" class="btn-custom btn-edit">✏️ Edit Profil</a>
                 <a href="home.php" class="btn-custom btn-back">← Kembali ke Home</a>
             </div>
 
-            <!-- Member Since -->
             <div class="member-since">
-                Anda telah menjadi member sejak <?php echo isset($user['created_at']) && !empty($user['created_at']) ? date('d F Y', strtotime($user['created_at'])) : 'Tidak tersedia'; ?>
+                Member sejak <?php echo isset($user['created_at']) && !empty($user['created_at']) ? date('Y', strtotime($user['created_at'])) : date('Y'); ?>
             </div>
         </div>
     </div>
 
-    <!-- Footer -->
     <footer>
-        <p>&copy; 2025 PT. KAI (Persero). All rights reserved.</p>
+        <p class="mb-0">&copy; 2025 PT. KAI (Persero). All rights reserved.</p>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
