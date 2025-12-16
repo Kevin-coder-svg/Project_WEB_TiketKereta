@@ -23,13 +23,22 @@ if ($conn) {
     $schedule = $res->fetch_assoc();
     $stmt->close();
 
-    // Get carriages
-    $cstmt = $conn->prepare("SELECT carriage_id, name, capacity FROM carriages WHERE train_id = ?");
-    $cstmt->bind_param('i', $schedule['train_id']);
-    $cstmt->execute();
-    $cres = $cstmt->get_result();
-    $carriages = $cres->fetch_all(MYSQLI_ASSOC);
-    $cstmt->close();
+    // Get carriages (guard against missing `carriages` table)
+    try {
+      $cstmt = $conn->prepare("SELECT carriage_id, name, capacity FROM carriages WHERE train_id = ?");
+    } catch (mysqli_sql_exception $e) {
+      $cstmt = false;
+      error_log('Carriages table not available (seat_selection): ' . $e->getMessage());
+    }
+    if ($cstmt) {
+      $cstmt->bind_param('i', $schedule['train_id']);
+      $cstmt->execute();
+      $cres = $cstmt->get_result();
+      $carriages = $cres->fetch_all(MYSQLI_ASSOC);
+      $cstmt->close();
+    } else {
+      $carriages = [];
+    }
 
     // Get booked seats
     $booked_seats = [];

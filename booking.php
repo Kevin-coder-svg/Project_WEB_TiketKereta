@@ -52,13 +52,24 @@ $schedule = $res->fetch_assoc();
 $stmt->close();
 if (!$schedule) die('Schedule not found.');
 
-// Load carriages for train
-$cstmt = $conn->prepare("SELECT carriage_id, name, capacity FROM carriages WHERE train_id = ?");
-$cstmt->bind_param('i', $schedule['train_id']);
-$cstmt->execute();
-$cres = $cstmt->get_result();
-$carriages = $cres->fetch_all(MYSQLI_ASSOC);
-$cstmt->close();
+// Load carriages for train (guard against missing `carriages` table)
+$hasCarriagesTable = true;
+try {
+  $cstmt = $conn->prepare("SELECT carriage_id, name, capacity FROM carriages WHERE train_id = ?");
+} catch (mysqli_sql_exception $e) {
+  $cstmt = false;
+  $hasCarriagesTable = false;
+  error_log('Carriages table not available (booking load): ' . $e->getMessage());
+}
+if ($cstmt) {
+  $cstmt->bind_param('i', $schedule['train_id']);
+  $cstmt->execute();
+  $cres = $cstmt->get_result();
+  $carriages = $cres->fetch_all(MYSQLI_ASSOC);
+  $cstmt->close();
+} else {
+  $carriages = [];
+}
 
 // Detect if bookings table has advanced columns (carriage_id, seats, passenger_name, status, created_at)
 $has_carriage_col = false;
@@ -80,6 +91,11 @@ if ($colRes) {
       if ($field === 'passenger_name') $has_passenger_col = true;
       if ($field === 'status') $has_status_col = true;
     }
+}
+
+// If carriages table is missing, disable advanced carriage-aware booking flow
+if (!$hasCarriagesTable) {
+  $has_carriage_col = false;
 }
 
 $errors = [];
@@ -219,7 +235,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   $q->close();
 
                   // Lock carriage capacity
-                  $q2 = $conn->prepare("SELECT capacity FROM carriages WHERE carriage_id = ? FOR UPDATE");
+                  try {
+                    $q2 = $conn->prepare("SELECT capacity FROM carriages WHERE carriage_id = ? FOR UPDATE");
+                  } catch (mysqli_sql_exception $e) {
+                    $q2 = false;
+                    error_log('Carriages table not available (booking cap): ' . $e->getMessage());
+                  }
+                  if (!$q2) {
+                    throw new Exception('Carriage data not available.');
+                  }
                   $q2->bind_param('i', $carriage_id);
                   $q2->execute();
                   $capRow = $q2->get_result()->fetch_assoc();
