@@ -25,11 +25,13 @@ if ($conn) {
 
     // Get carriages
     $cstmt = $conn->prepare("SELECT carriage_id, name, capacity FROM carriages WHERE train_id = ?");
-    $cstmt->bind_param('i', $schedule['train_id']);
-    $cstmt->execute();
-    $cres = $cstmt->get_result();
-    $carriages = $cres->fetch_all(MYSQLI_ASSOC);
-    $cstmt->close();
+    if ($cstmt) {
+        $cstmt->bind_param('i', $schedule['train_id']);
+        $cstmt->execute();
+        $cres = $cstmt->get_result();
+        $carriages = $cres->fetch_all(MYSQLI_ASSOC);
+        $cstmt->close();
+    }
 
     // Get booked seats
     $booked_seats = [];

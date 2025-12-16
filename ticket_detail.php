@@ -76,7 +76,7 @@ if (!$booking) {
 
         <p class="mt-3"><strong>Total Bayar:</strong> Rp <?= number_format($booking['total_amount'], 0, ',', '.') ?></p>
 
-        <a href="home.html" class="btn btn-primary">Kembali ke Home</a>
+        <a href="home.php" class="btn btn-primary">Kembali ke Home</a>
       </div>
     </div>
   </div>

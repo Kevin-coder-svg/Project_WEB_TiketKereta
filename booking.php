@@ -56,11 +56,6 @@ if (!$schedule) {
     die('Jadwal tidak ditemukan. Pastikan data ada di database.');
 }
 
-<<<<<<< HEAD
-// Set capacity from train's total_carriages
-$capacity = (int)$schedule['total_carriages'];
-$carriages = []; // No carriages, use total as capacity
-=======
 // Load carriages for train (guard against missing `carriages` table)
 $hasCarriagesTable = true;
 try {
@@ -79,7 +74,6 @@ if ($cstmt) {
 } else {
   $carriages = [];
 }
->>>>>>> refs/remotes/origin/main
 
 // Detect if bookings table has advanced columns (carriage_id, seats, passenger_name, status, created_at)
 $has_carriage_col = false;
@@ -230,9 +224,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   $used = (int)$usedRow['used'];
                   $q->close();
 
-<<<<<<< HEAD
-=======
-                  // Lock carriage capacity
+// Lock carriage capacity
                   try {
                     $q2 = $conn->prepare("SELECT capacity FROM carriages WHERE carriage_id = ? FOR UPDATE");
                   } catch (mysqli_sql_exception $e) {
@@ -248,8 +240,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   $q2->close();
                   if (!$capRow) throw new Exception('Carriage not found.');
                   $capacity = (int)$capRow['capacity'];
-
->>>>>>> refs/remotes/origin/main
                   if ($used + $seats > $capacity) {
                       throw new Exception('Kursi tidak cukup. Tersisa: ' . max(0, $capacity - $used));
                   }
