@@ -1,3 +1,15 @@
+<?php
+session_start();
+
+// Cek apakah user sudah login
+if (!isset($_SESSION['loggedin']) || !$_SESSION['loggedin']) {
+    header('Location: login.php');
+    exit();
+}
+
+$userName = $_SESSION['full_name'] ?? $_SESSION['email'] ?? 'Pengguna';
+$userEmail = $_SESSION['email'] ?? '';
+?>
 <!doctype html>
 <html lang="id">
 
@@ -182,6 +194,15 @@
       transform: translateY(-5px);
       box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
     }
+    .feature-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    }
+
+    .feature-link:hover {
+    color: inherit;
+    }
   </style>
 </head>
 
@@ -195,12 +216,12 @@
       ☰ Menu
     </div>
     <ul class="sidebar-menu">
-      <li><a href="home.html" class="active">🏠 Home</a></li>
+      <li><a href="home.php" class="active">🏠 Home</a></li>
       <li><a href="search.php">🔍 Cari Jadwal</a></li>
       <li><a href="booking.php">🎫 Pesan Tiket</a></li>
       <li><a href="history.php">📋 Riwayat Pemesanan</a></li>
       <li><a href="profile.php">👤 Profil Saya</a></li>
-      <li><a href="settings.php">⚙️ Pengaturan</a></li>
+      <li><a href="QnA.php">💭 QnA</a></li>
       <li><a href="logout.php" style="color: #ff6b6b;">🚪 Logout</a></li>
     </ul>
   </div>
@@ -211,7 +232,7 @@
       <button class="sidebar-toggle" id="sidebarToggle" type="button">
         ☰
       </button>
-      <a class="navbar-brand fw-bold" href="home.html">
+      <a class="navbar-brand fw-bold" href="home.php">
         🚂 KAI - Tiket Kereta
       </a>
     </div>
@@ -222,41 +243,63 @@
     <div class="content-section">
       <!-- Welcome Card -->
       <div class="welcome-card">
-        <h1 id="userName">Selamat Datang!</h1>
+        <h1>Selamat Datang, <?php echo htmlspecialchars($userName); ?>!</h1>
         <p class="mb-0">Nikmati kemudahan dalam memesan tiket kereta online.</p>
+        <?php if ($userEmail): ?>
+          <small class="text-light">Email: <?php echo htmlspecialchars($userEmail); ?></small>
+        <?php endif; ?>
       </div>
 
       <!-- Features -->
       <h3 class="mb-4">Fitur Tersedia</h3>
-      <div class="row">
-        <div class="col-md-6">
-          <div class="feature-card">
-            <h5>📅 Cari Jadwal Kereta</h5>
-            <p class="text-muted mb-0">Lihat jadwal kereta dari berbagai rute dan pilih yang sesuai dengan kebutuhan
-              Anda.</p>
-          </div>
-          <div class="feature-card">
-            <h5>🎫 Pesan Tiket</h5>
-            <p class="text-muted mb-0">Pesan tiket dengan mudah dan dapatkan konfirmasi langsung ke email Anda.</p>
-          </div>
+      <div class="row g-3">
+        <div class="col-lg-3 col-md-6 col-sm-12">
+            <a href="search.php" class="feature-link">
+                <div class="feature-card h-100">
+                    <h5>📅 Cari Jadwal Kereta</h5>
+                    <p class="text-muted mb-0">
+                    Lihat jadwal kereta dari berbagai rute dan pilih yang sesuai dengan kebutuhan Anda.
+                    </p>
+                </div>
+            </a>
         </div>
-        <div class="col-md-6">
-          <div class="feature-card">
-            <h5>📋 Riwayat Pemesanan</h5>
-            <p class="text-muted mb-0">Kelola dan lihat semua riwayat pemesanan tiket Anda.</p>
-          </div>
-          <div class="feature-card">
-            <h5>⚙️ Pengaturan Profil</h5>
-            <p class="text-muted mb-0">Ubah data profil dan password akun Anda dengan aman.</p>
-          </div>
+        <div class="col-lg-3 col-md-6 col-sm-12">
+            <a href="booking.php" class="feature-link">
+                <div class="feature-card h-100">
+                    <h5>🎫 Pesan Tiket</h5>
+                    <p class="text-muted mb-0">
+                    Pesan tiket dengan mudah dan dapatkan konfirmasi langsung ke email Anda.
+                    </p>
+                </div>
+            </a>
+        </div>
+        <div class="col-lg-3 col-md-6 col-sm-12">
+            <a href="history.php" class="feature-link">
+                <div class="feature-card h-100">
+                    <h5>📋 Riwayat Pemesanan</h5>
+                    <p class="text-muted mb-0">
+                    Kelola dan lihat semua riwayat pemesanan tiket Anda.
+                    </p>
+                </div>
+            </a>
+        </div>
+        <div class="col-lg-3 col-md-6 col-sm-12">
+            <a href="QnA.php" class="feature-link">
+                <div class="feature-card h-100">
+                    <h5>💭 QnA</h5>
+                    <p class="text-muted mb-0">
+                    Ajukan pertanyaan dan lihat jawaban seputar layanan kereta.
+                    </p>
+                </div>
+            </a>
         </div>
       </div>
 
       <!-- Quick Actions -->
       <div class="mt-5 pt-4 border-top">
         <h4 class="mb-3">Aksi Cepat</h4>
-        <a href="#" class="btn btn-primary me-2">Cari Jadwal</a>
-        <a href="#" class="btn btn-outline-primary">Lihat Pemesanan</a>
+        <a href="search.php" class="btn btn-primary me-2">Cari Jadwal</a>
+        <a href="history.php" class="btn btn-outline-primary">Lihat Pemesanan</a>
       </div>
     </div>
   </div>
@@ -294,16 +337,6 @@
         sidebar.classList.remove('active');
         sidebarOverlay.classList.remove('active');
       });
-    });
-
-    // Simple script to display user info from sessionStorage (set by login.php or JavaScript)
-    // Note: For production, use server-side sessions (PHP session) instead
-    document.addEventListener('DOMContentLoaded', function () {
-      // Get user info from query params or localStorage (backend should redirect with user info or use server sessions)
-      const userName = localStorage.getItem('userName') || 'Pengguna';
-      const userRole = localStorage.getItem('userRole') || 'user';
-
-      document.getElementById('userName').textContent = 'Selamat Datang, ' + userName + '!';
     });
   </script>
 </body>
