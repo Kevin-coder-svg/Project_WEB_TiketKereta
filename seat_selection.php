@@ -23,8 +23,13 @@ if ($conn) {
     $schedule = $res->fetch_assoc();
     $stmt->close();
 
-    // No carriages, use total_carriages as capacity
-    $carriages = []; // Empty
+    // Get carriages
+    $cstmt = $conn->prepare("SELECT carriage_id, name, capacity FROM carriages WHERE train_id = ?");
+    $cstmt->bind_param('i', $schedule['train_id']);
+    $cstmt->execute();
+    $cres = $cstmt->get_result();
+    $carriages = $cres->fetch_all(MYSQLI_ASSOC);
+    $cstmt->close();
 
     // Get booked seats
     $booked_seats = [];

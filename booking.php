@@ -56,9 +56,30 @@ if (!$schedule) {
     die('Jadwal tidak ditemukan. Pastikan data ada di database.');
 }
 
+<<<<<<< HEAD
 // Set capacity from train's total_carriages
 $capacity = (int)$schedule['total_carriages'];
 $carriages = []; // No carriages, use total as capacity
+=======
+// Load carriages for train (guard against missing `carriages` table)
+$hasCarriagesTable = true;
+try {
+  $cstmt = $conn->prepare("SELECT carriage_id, name, capacity FROM carriages WHERE train_id = ?");
+} catch (mysqli_sql_exception $e) {
+  $cstmt = false;
+  $hasCarriagesTable = false;
+  error_log('Carriages table not available (booking load): ' . $e->getMessage());
+}
+if ($cstmt) {
+  $cstmt->bind_param('i', $schedule['train_id']);
+  $cstmt->execute();
+  $cres = $cstmt->get_result();
+  $carriages = $cres->fetch_all(MYSQLI_ASSOC);
+  $cstmt->close();
+} else {
+  $carriages = [];
+}
+>>>>>>> refs/remotes/origin/main
 
 // Detect if bookings table has advanced columns (carriage_id, seats, passenger_name, status, created_at)
 $has_carriage_col = false;
@@ -80,6 +101,11 @@ if ($colRes) {
       if ($field === 'passenger_name') $has_passenger_col = true;
       if ($field === 'status') $has_status_col = true;
     }
+}
+
+// If carriages table is missing, disable advanced carriage-aware booking flow
+if (!$hasCarriagesTable) {
+  $has_carriage_col = false;
 }
 
 $errors = [];
@@ -204,6 +230,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   $used = (int)$usedRow['used'];
                   $q->close();
 
+<<<<<<< HEAD
+=======
+                  // Lock carriage capacity
+                  try {
+                    $q2 = $conn->prepare("SELECT capacity FROM carriages WHERE carriage_id = ? FOR UPDATE");
+                  } catch (mysqli_sql_exception $e) {
+                    $q2 = false;
+                    error_log('Carriages table not available (booking cap): ' . $e->getMessage());
+                  }
+                  if (!$q2) {
+                    throw new Exception('Carriage data not available.');
+                  }
+                  $q2->bind_param('i', $carriage_id);
+                  $q2->execute();
+                  $capRow = $q2->get_result()->fetch_assoc();
+                  $q2->close();
+                  if (!$capRow) throw new Exception('Carriage not found.');
+                  $capacity = (int)$capRow['capacity'];
+
+>>>>>>> refs/remotes/origin/main
                   if ($used + $seats > $capacity) {
                       throw new Exception('Kursi tidak cukup. Tersisa: ' . max(0, $capacity - $used));
                   }

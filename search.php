@@ -78,12 +78,21 @@ if ($origin === '' && $destination === '' && $date === '' && $class === '') {
       $stmt->close();
 
       // If class filter requested, remove schedules whose trains don't have that class in carriages
+      // Protect against environments where `carriages` table does not exist by catching mysqli exceptions
+      $hasCarriagesTable = true;
       if ($class !== '' && !empty($results)) {
         $filtered = [];
-        $chkStmt = $conn->prepare("SELECT 1 FROM `carriages` WHERE train_id = ? AND name LIKE ? LIMIT 1");
+        try {
+          $chkStmt = $conn->prepare("SELECT 1 FROM `carriages` WHERE train_id = ? AND name LIKE ? LIMIT 1");
+        } catch (mysqli_sql_exception $e) {
+          $chkStmt = false;
+          $hasCarriagesTable = false;
+          error_log('Carriages table not available (chk): ' . $e->getMessage());
+        }
+
         foreach ($results as $r) {
           $has = false;
-          if ($chkStmt) {
+          if ($hasCarriagesTable && $chkStmt) {
             $like = "%$class%";
             $tid = (int)$r['train_id'];
             $chkStmt->bind_param('is', $tid, $like);
@@ -92,6 +101,9 @@ if ($origin === '' && $destination === '' && $date === '' && $class === '') {
             if ($g && $g->fetch_row()) {
               $has = true;
             }
+          } else {
+            // If we cannot check carriages, assume the schedule matches (avoid hiding results)
+            $has = true;
           }
           if ($has) $filtered[] = $r;
         }
@@ -465,7 +477,13 @@ if ($origin === '' && $destination === '' && $date === '' && $class === '') {
                   $classes = [];
                   $seats = null;
                   if (isset($conn) && $conn) {
-                    $cstmt = $conn->prepare("SELECT name, capacity FROM carriages WHERE train_id = ?");
+                    try {
+                      $cstmt = $conn->prepare("SELECT name, capacity FROM carriages WHERE train_id = ?");
+                    } catch (mysqli_sql_exception $e) {
+                      $cstmt = false;
+                      $hasCarriagesTable = false;
+                      error_log('Carriages table not available (cstmt): ' . $e->getMessage());
+                    }
                     if ($cstmt) {
                       $tid = (int)$r['train_id'];
                       $cstmt->bind_param('i', $tid);
