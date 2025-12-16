@@ -16,20 +16,15 @@ $conn = function_exists('get_db_connection') ? get_db_connection() : (isset($con
 $schedule = null;
 $carriages = [];
 if ($conn) {
-    $stmt = $conn->prepare("SELECT s.schedule_id, s.train_id, t.train_name, o.station_name AS origin_name, d.station_name AS destination_name, s.departure_time, s.arrival_time, s.price FROM schedules s JOIN trains t ON s.train_id = t.train_id LEFT JOIN stations o ON s.origin_station_id = o.station_id LEFT JOIN stations d ON s.destination_station_id = d.station_id WHERE s.schedule_id = ?");
+    $stmt = $conn->prepare("SELECT s.schedule_id, s.train_id, t.train_name, t.total_carriages, o.station_name AS origin_name, d.station_name AS destination_name, s.departure_time, s.arrival_time, s.price FROM schedules s JOIN trains t ON s.train_id = t.train_id LEFT JOIN stations o ON s.origin_station_id = o.station_id LEFT JOIN stations d ON s.destination_station_id = d.station_id WHERE s.schedule_id = ?");
     $stmt->bind_param('i', $schedule_id);
     $stmt->execute();
     $res = $stmt->get_result();
     $schedule = $res->fetch_assoc();
     $stmt->close();
 
-    // Get carriages
-    $cstmt = $conn->prepare("SELECT carriage_id, name, capacity FROM carriages WHERE train_id = ?");
-    $cstmt->bind_param('i', $schedule['train_id']);
-    $cstmt->execute();
-    $cres = $cstmt->get_result();
-    $carriages = $cres->fetch_all(MYSQLI_ASSOC);
-    $cstmt->close();
+    // No carriages, use total_carriages as capacity
+    $carriages = []; // Empty
 
     // Get booked seats
     $booked_seats = [];
@@ -65,10 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Get total seats
-$total_seats = 0;
-foreach ($carriages as $c) {
-    $total_seats += $c['capacity'];
-}
+$total_seats = (int)$schedule['total_carriages'];
 $available_seats = $total_seats; // Simplified, assume all available for now
 ?>
 <!doctype html>
@@ -135,7 +127,7 @@ $available_seats = $total_seats; // Simplified, assume all available for now
       map.style.display = 'flex';
       map.style.flexDirection = 'column';
       map.style.alignItems = 'center';
-      const totalSeats = 40; // Temporary for testing
+      const totalSeats = <?= $total_seats ?>; // From train capacity
       const bookedSeats = <?= json_encode($booked_seats) ?>;
       if (totalSeats === 0) {
         map.innerHTML = '<p class="text-muted">Tidak ada kursi tersedia untuk jadwal ini.</p>';

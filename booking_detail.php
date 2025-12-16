@@ -28,14 +28,36 @@ if (!$schedule) {
 // Handle POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $num_passengers = (int)($_POST['num_passengers'] ?? 0);
+    $passenger_names = $_POST['passenger_name'] ?? [];
+    $passenger_niks = $_POST['passenger_nik'] ?? [];
+    $passenger_phones = $_POST['passenger_phone'] ?? [];
+
     if ($num_passengers < 1 || $num_passengers > 10) {
         $error = 'Jumlah penumpang harus antara 1-10.';
+    } elseif (count($passenger_names) !== $num_passengers || count($passenger_niks) !== $num_passengers || count($passenger_phones) !== $num_passengers) {
+        $error = 'Harap isi semua data untuk setiap penumpang.';
     } else {
-        // Store num_passengers in session and redirect to seat_selection.php
-        $_SESSION['num_passengers'] = $num_passengers;
-        $_SESSION['booking_schedule_id'] = $schedule_id;
-        header('Location: seat_selection.php?schedule_id=' . $schedule_id);
-        exit;
+        $passengers_data = [];
+        for ($i = 0; $i < $num_passengers; $i++) {
+            if (empty(trim($passenger_names[$i])) || empty(trim($passenger_niks[$i])) || empty(trim($passenger_phones[$i]))) {
+                $error = 'Data penumpang tidak boleh kosong.';
+                break;
+            }
+            $passengers_data[] = [
+                'name' => trim($passenger_names[$i]),
+                'nik' => trim($passenger_niks[$i]),
+                'phone' => trim($passenger_phones[$i])
+            ];
+        }
+
+        if (!isset($error)) {
+            // Store data in session and redirect
+            $_SESSION['num_passengers'] = $num_passengers;
+            $_SESSION['passengers'] = $passengers_data;
+            $_SESSION['booking_schedule_id'] = $schedule_id;
+            header('Location: seat_selection.php?schedule_id=' . $schedule_id);
+            exit;
+        }
     }
 }
 ?>
@@ -49,7 +71,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <style>
     body { background: #f4f6f8; }
     .container { max-width: 800px; margin-top: 30px; }
-    .passenger-fields { display: none; }
   </style>
 </head>
 <body>
@@ -71,10 +92,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <select name="num_passengers" id="num_passengers" class="form-select" required>
               <option value="">Pilih jumlah</option>
               <?php for ($i=1; $i<=10; $i++): ?>
-                <option value="<?= $i ?>" <?= isset($_POST['num_passengers']) && $_POST['num_passengers'] == $i ? 'selected' : '' ?>><?= $i ?></option>
+                <option value="<?= $i ?>" <?= (isset($_POST['num_passengers']) && $_POST['num_passengers'] == $i) ? 'selected' : '' ?>><?= $i ?></option>
               <?php endfor; ?>
             </select>
           </div>
+
+          <div id="passenger_fields_container"></div>
 
           <button type="submit" class="btn btn-primary">Lanjut ke Pilih Kursi</button>
           <a href="search.php" class="btn btn-secondary">Kembali</a>
@@ -85,39 +108,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    function updatePassengerFields() {
-      const num = parseInt(document.getElementById('num_passengers').value);
-      const container = document.getElementById('passenger_fields');
-      if (num > 0) {
-        let html = '';
-        for (let i = 1; i <= num; i++) {
-          const nameVal = document.querySelector(`input[name="name_${i}"]`)?.value || '';
-          const nipVal = document.querySelector(`input[name="nip_${i}"]`)?.value || '';
-          const phoneVal = document.querySelector(`input[name="phone_${i}"]`)?.value || '';
-          html += `
-            <div class="passenger-fields mb-4 p-3 border rounded">
-              <h6>Penumpang ${i}</h6>
-              <div class="row">
-                <div class="col-md-4">
-                  <label class="form-label">Nama Lengkap</label>
-                  <input type="text" name="name_${i}" class="form-control" value="${nameVal}" required>
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">NIP</label>
-                  <input type="text" name="nip_${i}" class="form-control" value="${nipVal}" required>
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">No. HP</label>
-                  <input type="tel" name="phone_${i}" class="form-control" value="${phoneVal}" required>
-                </div>
+    document.getElementById('num_passengers').addEventListener('change', function() {
+      const num = parseInt(this.value);
+      const container = document.getElementById('passenger_fields_container');
+      
+      if (isNaN(num) || num <= 0) {
+        container.innerHTML = '';
+        return;
+      }
+      
+      let html = '';
+      for (let i = 1; i <= num; i++) {
+        html += `
+          <div class="passenger-fields mb-4 p-3 border rounded">
+            <h6>Penumpang ${i}</h6>
+            <div class="row">
+              <div class="col-md-4">
+                <label class="form-label">Nama Lengkap</label>
+                <input type="text" name="passenger_name[]" class="form-control" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">No. Identitas / NIK</label>
+                <input type="text" name="passenger_nik[]" class="form-control" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">No. HP</label>
+                <input type="tel" name="passenger_phone[]" class="form-control" required>
               </div>
             </div>
-          `;
-        }
-        container.innerHTML = html;
-      } else {
-        container.innerHTML = '';
+          </div>
+        `;
       }
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+      container.innerHTML = html;
+    });
+
+    // Trigger change on page load if a value is already selected
+    if (document.getElementById('num_passengers').value) {
+        document.getElementById('num_passengers').dispatchEvent(new Event('change'));
+    }
+  </script>
 </body>
 </html>

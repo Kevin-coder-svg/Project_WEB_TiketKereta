@@ -41,24 +41,24 @@ if ($schedule_id <= 0) {
 }
 
 $conn = function_exists('get_db_connection') ? get_db_connection() : (isset($conn) ? $conn : null);
-if (!$conn) die('DB connection error.');
 
 // Fetch schedule + train
-$stmt = $conn->prepare("SELECT s.schedule_id, s.train_id, s.departure_time, s.arrival_time, s.price, t.train_name FROM schedules s JOIN trains t ON s.train_id = t.train_id WHERE s.schedule_id = ?");
+$stmt = $conn->prepare("SELECT s.schedule_id, s.train_id, s.departure_time, s.arrival_time, s.price, t.train_name, t.total_carriages FROM schedules s JOIN trains t ON s.train_id = t.train_id WHERE s.schedule_id = ?");
+if (!$stmt) {
+    die('Query gagal: ' . $conn->error . '. Pastikan tabel schedules dan trains ada.');
+}
 $stmt->bind_param('i', $schedule_id);
 $stmt->execute();
 $res = $stmt->get_result();
 $schedule = $res->fetch_assoc();
 $stmt->close();
-if (!$schedule) die('Schedule not found.');
+if (!$schedule) {
+    die('Jadwal tidak ditemukan. Pastikan data ada di database.');
+}
 
-// Load carriages for train
-$cstmt = $conn->prepare("SELECT carriage_id, name, capacity FROM carriages WHERE train_id = ?");
-$cstmt->bind_param('i', $schedule['train_id']);
-$cstmt->execute();
-$cres = $cstmt->get_result();
-$carriages = $cres->fetch_all(MYSQLI_ASSOC);
-$cstmt->close();
+// Set capacity from train's total_carriages
+$capacity = (int)$schedule['total_carriages'];
+$carriages = []; // No carriages, use total as capacity
 
 // Detect if bookings table has advanced columns (carriage_id, seats, passenger_name, status, created_at)
 $has_carriage_col = false;
@@ -124,23 +124,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $booking_id = $conn->insert_id;
         $stmt->close();
 
-        // Insert tickets for each passenger
-        if ($hasTickets) {
-          $tstmt = $conn->prepare("INSERT INTO tickets (booking_id, seat_number, passenger_name, passenger_nik, passenger_phone) VALUES (?, ?, ?, ?, ?)");
-          foreach ($passengers as $index => $p) {
-            $seat = $selected_seats[$index];
-            $tstmt->bind_param('issss', $booking_id, $seat, $p['name'], $p['nip'], $p['phone']);
-            $tstmt->execute();
-          }
-          $tstmt->close();
-        }
-
         $conn->commit();
 
-        // Clear session
-        unset($_SESSION['num_passengers'], $_SESSION['selected_seats'], $_SESSION['booking_schedule_id']);
-
-        header('Location: booking_confirm.php?booking_id=' . $booking_id);
+        header('Location: payment.php?booking_id=' . $booking_id);
         exit;
       } catch (Exception $ex) {
         $conn->rollback();
@@ -208,24 +194,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   }
                 }
 
-                // If no explicit seats, check capacity by carriage
+                // If no explicit seats, check total capacity for schedule
                 if (empty($selected_seats)) {
-                  // Lock sum of used seats for this schedule+carriage
-                  $q = $conn->prepare("SELECT COALESCE(SUM(seats),0) AS used FROM bookings WHERE schedule_id = ? AND carriage_id = ? AND status IN ('PENDING','CONFIRMED','PAID') FOR UPDATE");
-                  $q->bind_param('ii', $schedule_id, $carriage_id);
+                  // Lock sum of used seats for this schedule
+                  $q = $conn->prepare("SELECT COALESCE(SUM(seats),0) AS used FROM bookings WHERE schedule_id = ? AND status IN ('PENDING','CONFIRMED','PAID') FOR UPDATE");
+                  $q->bind_param('i', $schedule_id);
                   $q->execute();
                   $usedRow = $q->get_result()->fetch_assoc();
                   $used = (int)$usedRow['used'];
                   $q->close();
-
-                  // Lock carriage capacity
-                  $q2 = $conn->prepare("SELECT capacity FROM carriages WHERE carriage_id = ? FOR UPDATE");
-                  $q2->bind_param('i', $carriage_id);
-                  $q2->execute();
-                  $capRow = $q2->get_result()->fetch_assoc();
-                  $q2->close();
-                  if (!$capRow) throw new Exception('Carriage not found.');
-                  $capacity = (int)$capRow['capacity'];
 
                   if ($used + $seats > $capacity) {
                       throw new Exception('Kursi tidak cukup. Tersisa: ' . max(0, $capacity - $used));
@@ -235,11 +212,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $total_price = $seats * (float)$schedule['price'];
 
                 if ($user_id === null) {
-                  $ins = $conn->prepare("INSERT INTO bookings (user_id, schedule_id, carriage_id, passenger_name, seats, total_amount, status, created_at) VALUES (NULL, ?, ?, ?, ?, ?, 'PENDING', NOW())");
-                  $ins->bind_param('iisid', $schedule_id, $carriage_id, $passenger_name, $seats, $total_price);
+                  $ins = $conn->prepare("INSERT INTO bookings (user_id, schedule_id, seats, total_amount, status, created_at) VALUES (NULL, ?, ?, ?, 'PENDING', NOW())");
+                  $ins->bind_param('iids', $schedule_id, $seats, $total_price);
                 } else {
-                  $ins = $conn->prepare("INSERT INTO bookings (user_id, schedule_id, carriage_id, passenger_name, seats, total_amount, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'PENDING', NOW())");
-                  $ins->bind_param('iiisid', $user_id, $schedule_id, $carriage_id, $passenger_name, $seats, $total_price);
+                  $ins = $conn->prepare("INSERT INTO bookings (user_id, schedule_id, seats, total_amount, status, created_at) VALUES (?, ?, ?, ?, 'PENDING', NOW())");
+                  $ins->bind_param('iiids', $user_id, $schedule_id, $seats, $total_price);
                 }
                 $ins->execute();
                 $booking_id = $ins->insert_id;
@@ -247,13 +224,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 // If a tickets table exists, create ticket rows (one row per seat)
                 if ($hasTickets) {
-                  $tstmt = $conn->prepare("INSERT INTO tickets (booking_id, carriage_id, seat_number, passenger_name, passenger_nik) VALUES (?, ?, ?, ?, ?)");
+                  $tstmt = $conn->prepare("INSERT INTO tickets (booking_id, seat_number, passenger_name, passenger_nik) VALUES (?, ?, ?, ?)");
                   if ($tstmt) {
                     // if explicit seat numbers provided, insert using them
                     if (!empty($selected_seats)) {
                       foreach ($selected_seats as $seat_number) {
                         $pname = $passenger_name ?: 'Tamu';
-                        $tstmt->bind_param('iisss', $booking_id, $carriage_id, $seat_number, $pname, $passenger_nik);
+                        $tstmt->bind_param('isss', $booking_id, $seat_number, $pname, $passenger_nik);
                         $tstmt->execute();
                       }
                     } else {
@@ -261,7 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                       $seat_number = null;
                       for ($i = 0; $i < max(1, $seats); $i++) {
                         $pname = $passenger_name ?: 'Tamu';
-                        $tstmt->bind_param('iisss', $booking_id, $carriage_id, $seat_number, $pname, $passenger_nik);
+                        $tstmt->bind_param('isss', $booking_id, $seat_number, $pname, $passenger_nik);
                         $tstmt->execute();
                       }
                     }
@@ -340,21 +317,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           }
 
           if ($hasTickets) {
-            $tstmt = $conn->prepare("INSERT INTO tickets (booking_id, carriage_id, seat_number, passenger_name, passenger_nik) VALUES (?, ?, ?, ?, ?)");
+            $tstmt = $conn->prepare("INSERT INTO tickets (booking_id, seat_number, passenger_name, passenger_nik) VALUES (?, ?, ?, ?)");
             if ($tstmt) {
               $passenger_nik = trim($_POST['passenger_nik'] ?? '');
-              $car = $default_carriage ?? (isset($carriage_id) ? $carriage_id : null);
               if (!empty($selected_from_post)) {
                 foreach ($selected_from_post as $seat_number) {
                   $pname = $passenger_name ?? 'Tamu';
-                  $tstmt->bind_param('iisss', $booking_id, $car, $seat_number, $pname, $passenger_nik);
+                  $tstmt->bind_param('isss', $booking_id, $seat_number, $pname, $passenger_nik);
                   try { $tstmt->execute(); } catch (mysqli_sql_exception $te) { $errors[] = 'Gagal membuat tiket: ' . $te->getMessage(); break; }
                 }
               } else {
                 for ($i = 0; $i < $seats_to_create; $i++) {
                   $seat_number = null;
                   $pname = $passenger_name ?? 'Tamu';
-                  $tstmt->bind_param('iisss', $booking_id, $car, $seat_number, $pname, $passenger_nik);
+                  $tstmt->bind_param('isss', $booking_id, $seat_number, $pname, $passenger_nik);
                   try { $tstmt->execute(); } catch (mysqli_sql_exception $te) { $errors[] = 'Gagal membuat tiket: ' . $te->getMessage(); break; }
                 }
               }
@@ -428,6 +404,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php endif; ?>
 
             <form method="post" id="bookingForm">
+              <input type="hidden" name="schedule_id" value="<?= $schedule_id ?>">
               <div class="row g-3">
                 <?php if ($has_carriage_col && $has_seats_col && $has_passenger_col && $has_status_col): ?>
                   <div class="col-md-6">
@@ -472,7 +449,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php endif; ?>
 
                 <div class="col-12 d-flex gap-2">
-                  <button class="btn btn-primary" id="submitBtn">Pesan</button>
+                  <button type="submit" class="btn btn-primary" id="submitBtn">Pesan</button>
                   <a href="search.php" class="btn btn-outline-secondary">Batal</a>
                 </div>
               </div>
