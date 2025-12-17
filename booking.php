@@ -469,9 +469,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   </div>
 
                 <?php else: ?>
-                  <div class="col-12">
-                    <p class="text-muted">Mode sederhana: sistem akan membuat booking dasar. Untuk fitur lengkap (pilih kelas & jumlah kursi) jalankan migration SQL yang tersedia.</p>
-                  </div>
+
                 <?php endif; ?>
 
                 <div class="col-12 d-flex gap-2">

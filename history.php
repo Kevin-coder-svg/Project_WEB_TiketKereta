@@ -1,25 +1,21 @@
 <?php
 session_start();
 
-// 1. KONEKSI DATABASE
-// require_once 'db_config.php'; // Aktifkan jika file ini ada
 $conn = new mysqli('localhost', 'root', '', 'tiket kereta');
 
 if ($conn->connect_error) {
     die('Koneksi database gagal: ' . $conn->connect_error);
 }
 
-// 2. CEK LOGIN
+
 if (!isset($_SESSION['user_id'])) {
-    header('Location: HTML_login.html'); 
+    header('Location: login.php'); 
     exit;
 }
 
 $user_id = (int)$_SESSION['user_id'];
 
-// ==========================================
-// 3. LOGIKA VALIDASI PEMBAYARAN (ACTION)
-// ==========================================
+
 if (isset($_GET['action']) && $_GET['action'] == 'validate_payment' && isset($_GET['booking_id'])) {
     $val_booking_id = (int)$_GET['booking_id'];
 

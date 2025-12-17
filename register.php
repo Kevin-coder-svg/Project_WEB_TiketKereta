@@ -1,285 +1,173 @@
 <?php
-// register.php - Handle user registration (standalone version)
-
-// Database credentials
-$db_host = 'localhost';
-$db_user = 'root';
-$db_password = '';
-$db_name = 'tiket kereta';
-
-// Create connection
-$conn = new mysqli($db_host, $db_user, $db_password, $db_name);
-
-// Check connection
-if ($conn->connect_error) {
-    http_response_code(500);
-    die('Database connection error: ' . $conn->connect_error);
-}
-
-// Set charset  
-$conn->set_charset('utf8mb4');
-
-// Handle GET request (for debugging)
-if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    ?>
-    <!DOCTYPE html>
-    <html lang="id">
-    <head>
-        <meta charset="utf-8">
-        <title>Debug - Register</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-    </head>
-    <body class="p-4">
-        <div class="container">
-            <h2>Debug Information</h2>
-            <div class="alert alert-info">
-                <p><strong>Request Method:</strong> <?php echo $_SERVER['REQUEST_METHOD']; ?></p>
-                <p><strong>Database Connection:</strong> ✅ Connected</p>
-                <p><strong>This page processes POST requests only.</strong></p>
-            </div>
-            <a href="register.html" class="btn btn-primary">Kembali ke Form</a>
-        </div>
-    </body>
-    </html>
-    <?php
-    exit;
-}
-
-// Only accept POST
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    die('Method not allowed');
-}
-
-
-$full_name = isset($_POST['full_name']) ? trim($_POST['full_name']) : '';
-$nip = isset($_POST['nip']) ? trim($_POST['nip']) : '';
-$password_input = isset($_POST['password']) ? $_POST['password'] : '';
-$email = isset($_POST['email']) ? trim($_POST['email']) : '';
-$phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
-$alamat = isset($_POST['alamat']) ? trim($_POST['alamat']) : '';
-
+session_start();
+require 'db_config.php'; 
 
 $errors = [];
+$success = false;
+$success_name = '';
 
-if (strlen($full_name) < 2) {
-    $errors[] = 'Nama harus diisi minimal 2 karakter.';
-}
+$full_name = '';
+$nip = '';
+$email = '';
+$phone = '';
+$alamat = '';
 
-if (!ctype_digit($nip) || strlen($nip) < 6 || strlen($nip) > 16) {
-    $errors[] = 'NIP harus berupa angka dan minimal 6 sampai 16 digit.';
-}
-
-if (strlen($password_input) < 6) {
-    $errors[] = 'Password minimal 6 karakter.';
-}
-
-
-if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    $errors[] = 'Email tidak valid.';
-}
-
-
-if (!ctype_digit($phone) || strlen($phone) < 8 || strlen($phone) > 15) {
-    $errors[] = 'No. telepon harus berupa angka 8-15 digit.';
-}
-
-
-if (strlen($alamat) < 5) {
-    $errors[] = 'Alamat harus diisi minimal 5 karakter.';
-}
-
-
-if (!empty($errors)) {
-    http_response_code(400);
-    ?>
-    <!DOCTYPE html>
-    <html lang="id">
-    <head>
-        <meta charset="utf-8">
-        <title>Validation Error</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-        <style>
-            body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #f8f9fa; }
-            .card { max-width: 400px; }
-        </style>
-    </head>
-    <body>
-        <div class="card">
-            <div class="card-body">
-                <h3 class="text-danger mb-3">⚠️ Error Validasi</h3>
-                <div class="alert alert-danger">
-                    <?php foreach ($errors as $error): ?>
-                        <p class="mb-2">• <?php echo htmlspecialchars($error); ?></p>
-                    <?php endforeach; ?>
-                </div>
-                <a href="register.html" class="btn btn-primary w-100">Kembali ke Form</a>
-            </div>
-        </div>
-    </body>
-    </html>
-    <?php
-    exit;
-}
-
-
-$existsErrors = [];
-
-$checkNik = $conn->prepare("SELECT 1 FROM users WHERE nik = ? LIMIT 1");
-if ($checkNik) {
-    $checkNik->bind_param('s', $nip);
-    $checkNik->execute();
-    $checkNik->store_result();
-    if ($checkNik->num_rows > 0) {
-        $existsErrors[] = 'NIP sudah terdaftar.';
-    }
-    $checkNik->close();
-}
-
-$checkEmail = $conn->prepare("SELECT 1 FROM users WHERE email = ? LIMIT 1");
-if ($checkEmail) {
-    $checkEmail->bind_param('s', $email);
-    $checkEmail->execute();
-    $checkEmail->store_result();
-    if ($checkEmail->num_rows > 0) {
-        $existsErrors[] = 'Email sudah terdaftar.';
-    }
-    $checkEmail->close();
-}
-
-if (!empty($existsErrors)) {
-    http_response_code(409);
-    ?>
-    <!DOCTYPE html>
-    <html lang="id">
-    <head>
-        <meta charset="utf-8">
-        <title>Registrasi Gagal</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-        <style>
-            body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #f8f9fa; }
-            .card { max-width: 500px; }
-        </style>
-    </head>
-    <body>
-        <div class="card">
-            <div class="card-body">
-                <h3 class="text-danger mb-3">❌ Registrasi Gagal</h3>
-                <div class="alert alert-danger">
-                    <?php foreach ($existsErrors as $err): ?>
-                        <p class="mb-2">• <?php echo htmlspecialchars($err); ?></p>
-                    <?php endforeach; ?>
-                </div>
-                <a href="register.html" class="btn btn-primary w-100">Kembali ke Form</a>
-            </div>
-        </div>
-    </body>
-    </html>
-    <?php
-    exit;
-}
-
-
-$hashed_password = password_hash($password_input, PASSWORD_BCRYPT);
-
-
-$sql = "INSERT INTO users (full_name, password, nik, email, phone, alamat, role, created_at) VALUES (?, ?, ?, ?, ?, ?, 'user', NOW())";
-$stmt = $conn->prepare($sql);
-
-if (!$stmt) {
-    http_response_code(500);
-    ?>
-    <!DOCTYPE html>
-    <html lang="id">
-    <head>
-        <meta charset="utf-8">
-        <title>Database Error</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-        <style>
-            body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #f8f9fa; }
-            .card { max-width: 400px; }
-        </style>
-    </head>
-    <body>
-        <div class="card">
-            <div class="card-body">
-                <h3 class="text-danger mb-3">❌ Database Error</h3>
-                <p class="text-muted">Prepare failed: <?php echo htmlspecialchars($conn->error); ?></p>
-                <a href="register.html" class="btn btn-primary w-100">Kembali ke Form</a>
-            </div>
-        </div>
-    </body>
-    </html>
-    <?php
-    exit;
-}
-
-$stmt->bind_param('ssssss', $full_name, $hashed_password, $nip, $email, $phone, $alamat);
-
-
-if ($stmt->execute()) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
-    $stmt->close();
-    $conn->close();
-    ?>
-    <!DOCTYPE html>
-    <html lang="id">
-    <head>
-        <meta charset="utf-8">
-        <title>Registrasi Berhasil</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-        <style>
-            body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #f8f9fa; }
-            .card { max-width: 400px; }
-        </style>
-    </head>
-    <body>
-        <div class="card">
-            <div class="card-body text-center">
-                <h3 class="text-success mb-3">✅ Registrasi Berhasil!</h3>
-                <p class="text-muted mb-4">Nama: <strong><?php echo htmlspecialchars($full_name); ?></strong></p>
-                <p class="text-muted mb-4">Akun Anda telah dibuat. Anda akan dialihkan ke halaman login dalam 3 detik...</p>
-                <a href="HTML_login.html" class="btn btn-primary w-100">Masuk Sekarang</a>
-            </div>
-        </div>
-        <script>
-            setTimeout(() => {
-                window.location.href = 'HTML_login.html';
-            }, 3000);
-        </script>
-    </body>
-    </html>
-    <?php
-    exit;
-} else {
+    $full_name = trim($_POST['full_name'] ?? '');
+    $nip = trim($_POST['nip'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $phone = trim($_POST['phone'] ?? '');
+    $alamat = trim($_POST['alamat'] ?? '');
+    $password_input = $_POST['password'] ?? '';
 
-    http_response_code(500);
-    $error_msg = $stmt->error;
-    $stmt->close();
-    $conn->close();
-    ?>
-    <!DOCTYPE html>
-    <html lang="id">
-    <head>
-        <meta charset="utf-8">
-        <title>Registrasi Gagal</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-        <style>
-            body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #f8f9fa; }
-            .card { max-width: 400px; }
-        </style>
-    </head>
-    <body>
-        <div class="card">
-            <div class="card-body">
-                <h3 class="text-danger mb-3">❌ Registrasi Gagal</h3>
-                <p class="text-muted">Error: <?php echo htmlspecialchars($error_msg); ?></p>
-                <a href="register.html" class="btn btn-primary w-100">Kembali ke Form</a>
-            </div>
-        </div>
-    </body>
-    </html>
-    <?php
-    exit;
+    if (strlen($full_name) < 2) $errors[] = 'Nama minimal 2 karakter.';
+    if (!ctype_digit($nip) || strlen($nip) < 6 || strlen($nip) > 20) $errors[] = 'NIP harus angka (6-20 digit).';
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'Format email tidak valid.';
+    if (!ctype_digit($phone) || strlen($phone) < 8 || strlen($phone) > 15) $errors[] = 'No. Telepon harus angka (8-15 digit).';
+    if (strlen($alamat) < 5) $errors[] = 'Alamat terlalu pendek (min 5 karakter).';
+    if (strlen($password_input) < 6) $errors[] = 'Password minimal 6 karakter.';
+
+    if (empty($errors)) {
+        $stmt = $conn->prepare("SELECT 1 FROM users WHERE nik = ? LIMIT 1");
+        $stmt->bind_param('s', $nip);
+        $stmt->execute();
+        if ($stmt->get_result()->num_rows > 0) $errors[] = 'NIP sudah terdaftar.';
+        $stmt->close();
+
+        $stmt2 = $conn->prepare("SELECT 1 FROM users WHERE email = ? LIMIT 1");
+        $stmt2->bind_param('s', $email);
+        $stmt2->execute();
+        if ($stmt2->get_result()->num_rows > 0) $errors[] = 'Email sudah terdaftar.';
+        $stmt2->close();
+    }
+
+    if (empty($errors)) {
+        $hashed_password = password_hash($password_input, PASSWORD_BCRYPT);
+        $sql = "INSERT INTO users (full_name, password, nik, email, phone, alamat, role, created_at) VALUES (?, ?, ?, ?, ?, ?, 'user', NOW())";
+        
+        $stmtInsert = $conn->prepare($sql);
+        if ($stmtInsert) {
+            $stmtInsert->bind_param('ssssss', $full_name, $hashed_password, $nip, $email, $phone, $alamat);
+            if ($stmtInsert->execute()) {
+                $success = true;
+                $success_name = $full_name;
+            } else {
+                $errors[] = "Gagal menyimpan data: " . $stmtInsert->error;
+            }
+            $stmtInsert->close();
+        } else {
+            $errors[] = "Database error: " . $conn->error;
+        }
+    }
 }
+$conn->close();
 ?>
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Daftar - KAI Tiket</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+      body {
+        background-image: url('background.jpg');
+        background-size: cover;
+        background-attachment: fixed;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      .card-register { max-width: 520px; width: 100%; }
+      .bg-glass { background: rgba(255, 255, 255, 0.95) !important; }
+    </style>
+  </head>
+  <body>
+    
+    <div class="container card-register">
+      <div class="card shadow-lg bg-glass">
+        <div class="card-header text-center bg-primary text-white">
+          <h3 class="mb-0">Daftar Akun KAI</h3>
+        </div>
+        <div class="card-body p-4">
+
+          <?php if ($success): ?>
+            <div class="text-center py-4">
+                <div class="mb-3">
+                    <span style="font-size: 4rem;">✅</span>
+                </div>
+                <h3 class="text-success">Registrasi Berhasil!</h3>
+                <p class="lead">Halo, <strong><?= htmlspecialchars($success_name) ?></strong>.</p>
+                <p class="text-muted">Akun Anda telah dibuat. Mengalihkan ke halaman login...</p>
+                <a href="login.php" class="btn btn-primary w-100 mt-3">Masuk Sekarang (Manual)</a>
+                
+                <script>
+                    setTimeout(() => { window.location.href = 'login.php'; }, 3000);
+                </script>
+            </div>
+
+          <?php else: ?>
+            <p class="text-muted text-center">Buat akun untuk memesan tiket kereta.</p>
+
+            <?php if (!empty($errors)): ?>
+                <div class="alert alert-danger">
+                    <ul class="mb-0 ps-3">
+                        <?php foreach ($errors as $err): ?>
+                            <li><?= htmlspecialchars($err) ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            <?php endif; ?>
+
+            <form method="post" action="" novalidate>
+                <div class="mb-3">
+                  <label class="form-label">Nama Lengkap</label>
+                  <input name="full_name" type="text" class="form-control" placeholder="Nama lengkap" value="<?= htmlspecialchars($full_name) ?>" required>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">NIK / Nomor Identitas</label>
+                  <input name="nip" type="text" class="form-control" placeholder="Angka (Min. 6 digit)" value="<?= htmlspecialchars($nip) ?>" required>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Email</label>
+                  <input name="email" type="email" class="form-control" placeholder="nama@email.com" value="<?= htmlspecialchars($email) ?>" required>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">No. Telepon</label>
+                  <input name="phone" type="text" class="form-control" placeholder="08xxxxxxxxxx" value="<?= htmlspecialchars($phone) ?>" required>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Alamat</label>
+                  <textarea name="alamat" class="form-control" rows="2" required><?= htmlspecialchars($alamat) ?></textarea>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Password</label>
+                  <input name="password" type="password" class="form-control" placeholder="Minimal 6 karakter" required>
+                </div>
+
+                <div class="d-grid">
+                  <button type="submit" class="btn btn-primary btn-lg">Daftar Sekarang</button>
+                </div>
+            </form>
+          <?php endif; ?>
+
+        </div>
+        <?php if (!$success): ?>
+        <div class="card-footer text-center bg-light">
+          <small class="text-muted">Sudah punya akun? <a href="login.php" class="text-decoration-none fw-bold">Masuk di sini</a></small>
+        </div>
+        <?php endif; ?>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

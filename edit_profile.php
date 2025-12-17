@@ -1,26 +1,29 @@
 <?php
 session_start();
+
 if (!isset($_SESSION['user_id'])) {
-    header('Location: HTML_login.html');
+    header('Location: login.php');
     exit;
 }
-$conn = new mysqli('localhost', 'root', '', 'tiket kereta');
-if ($conn->connect_error) {
-    die('Koneksi database gagal: ' . $conn->connect_error);
-}
+
+require 'db_config.php'; 
 
 $user_id = $_SESSION['user_id'];
 $message = ""; 
 
 if (isset($_POST['update_profil'])) {
-    $email  = htmlspecialchars($_POST['email']);
-    $phone  = htmlspecialchars($_POST['phone']);
-    $alamat = htmlspecialchars($_POST['alamat']);
+    $email  = trim($_POST['email']);
+    $phone  = trim($_POST['phone']);
+    $alamat = trim($_POST['alamat']);
     $password_baru = $_POST['password']; 
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $message = "<div class='alert alert-danger'>Format email tidak valid.</div>";
-    } else {
+    } 
+    elseif (!empty($password_baru) && strlen($password_baru) < 6) {
+        $message = "<div class='alert alert-danger'>Password baru minimal harus 6 karakter.</div>";
+    } 
+    else {
         if (!empty($password_baru)) {
             $hashed_password = password_hash($password_baru, PASSWORD_DEFAULT);
             $sql = "UPDATE users SET email=?, phone=?, alamat=?, password=? WHERE user_id=?";
@@ -40,6 +43,7 @@ if (isset($_POST['update_profil'])) {
         $stmt->close();
     }
 }
+
 $sql_select = "SELECT * FROM users WHERE user_id = ?";
 $stmt_select = $conn->prepare($sql_select);
 $stmt_select->bind_param('i', $user_id);
@@ -62,8 +66,7 @@ $conn->close();
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Edit Profil - KAI Tiket Kereta</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
             background-image: url('background.jpg');
@@ -351,9 +354,7 @@ $conn->close();
         <p class="mb-0">&copy; 2025 PT. KAI (Persero). All rights reserved.</p>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
-        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
         const sidebar = document.getElementById('sidebar');

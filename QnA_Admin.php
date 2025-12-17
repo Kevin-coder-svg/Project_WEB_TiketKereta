@@ -5,7 +5,7 @@ require 'db_config.php';
 
 if (!isset($_SESSION['user_id']) || (isset($_SESSION['role']) && $_SESSION['role'] !== 'admin')) {
     
-     header('Location: HTML_login.html');
+     header('Location: login.php');
      exit;
 }
 

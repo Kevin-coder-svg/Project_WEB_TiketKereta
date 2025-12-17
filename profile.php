@@ -12,7 +12,7 @@ if ($conn->connect_error) {
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
-    header('Location: HTML_login.html');
+    header('Location: login.php');
     exit;
 }
 
