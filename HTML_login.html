@@ -56,13 +56,12 @@ i<!doctype html>
     </div>
     <script>
       document.getElementById('loginForm').addEventListener('submit', function(event) {
-        event.preventDefault(); // Prevent form submission
-
+        event.preventDefault(); 
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         const role = document.getElementById('role').value;
 
-        // Send login data to the server
+       
         fetch('login.php', {
           method: 'POST',
           headers: {
@@ -79,7 +78,7 @@ i<!doctype html>
                 window.location.href = 'home.php';
               }
             } else {
-              alert(data.message); // Show error message in a popup
+              alert(data.message); 
             }
           })
           .catch(error => {

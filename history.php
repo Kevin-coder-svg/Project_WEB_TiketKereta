@@ -1,22 +1,112 @@
 <?php
 session_start();
+
+// 1. KONEKSI DATABASE
 // require_once 'db_config.php'; // Aktifkan jika file ini ada
-// Koneksi Manual (Fallback)
 $conn = new mysqli('localhost', 'root', '', 'tiket kereta');
 
 if ($conn->connect_error) {
     die('Koneksi database gagal: ' . $conn->connect_error);
 }
 
-// Cek Login
+// 2. CEK LOGIN
 if (!isset($_SESSION['user_id'])) {
-  header('Location: HTML_login.html'); exit;
+    header('Location: HTML_login.html'); 
+    exit;
 }
 
 $user_id = (int)$_SESSION['user_id'];
 
-// Query Booking
-$sql = "SELECT b.booking_id, b.schedule_id, b.total_amount, b.status, b.created_at, s.departure_time, s.arrival_time, t.train_name
+// ==========================================
+// 3. LOGIKA VALIDASI PEMBAYARAN (ACTION)
+// ==========================================
+if (isset($_GET['action']) && $_GET['action'] == 'validate_payment' && isset($_GET['booking_id'])) {
+    $val_booking_id = (int)$_GET['booking_id'];
+
+    // A. Ambil Schedule ID dari booking ini (Pastikan milik user yang login)
+    $stmtCh = $conn->prepare("SELECT schedule_id FROM bookings WHERE booking_id = ? AND user_id = ? AND status = 'PENDING'");
+    $stmtCh->bind_param("ii", $val_booking_id, $user_id);
+    $stmtCh->execute();
+    $resCh = $stmtCh->get_result();
+    
+    if ($resCh->num_rows > 0) {
+        $rowCh = $resCh->fetch_assoc();
+        $schedule_id = $rowCh['schedule_id'];
+        $stmtCh->close();
+
+        // B. Ambil kursi yang dipesan dalam booking ini
+        $mySeats = [];
+        $stmtSeat = $conn->prepare("SELECT seat_number FROM tickets WHERE booking_id = ?");
+        $stmtSeat->bind_param("i", $val_booking_id);
+        $stmtSeat->execute();
+        $resSeat = $stmtSeat->get_result();
+        while($rs = $resSeat->fetch_assoc()) {
+            $mySeats[] = $rs['seat_number'];
+        }
+        $stmtSeat->close();
+
+        // C. Cek Konflik: Apakah kursi tersebut SUDAH berstatus PAID/CONFIRMED oleh orang lain di jadwal yang sama
+        $conflict = false;
+        if (!empty($mySeats)) {
+            // Buat string placeholder (?,?,?) sesuai jumlah kursi
+            $types = str_repeat('s', count($mySeats)); 
+            $placeholders = implode(',', array_fill(0, count($mySeats), '?'));
+            
+            // Query cek bentrok
+            $sqlCheck = "SELECT count(*) as total FROM tickets t 
+                         JOIN bookings b ON t.booking_id = b.booking_id 
+                         WHERE b.schedule_id = ? 
+                         AND b.status IN ('PAID', 'CONFIRMED') 
+                         AND t.seat_number IN ($placeholders)
+                         AND b.booking_id != ?";
+            
+            $stmtConflict = $conn->prepare($sqlCheck);
+            
+            // Bind parameter secara dinamis
+            $bindParams = array_merge([$schedule_id], $mySeats, [$val_booking_id]);
+            $bindTypeString = 'i' . $types . 'i';
+            
+            $refs = [];
+            $refs[] = &$bindTypeString;
+            foreach($bindParams as $key => $value) $refs[] = &$bindParams[$key];
+            
+            call_user_func_array([$stmtConflict, 'bind_param'], $refs);
+            
+            $stmtConflict->execute();
+            $resConf = $stmtConflict->get_result()->fetch_assoc();
+            
+            if ($resConf['total'] > 0) {
+                $conflict = true;
+            }
+            $stmtConflict->close();
+        }
+
+        if ($conflict) {
+            // SITUASI 1: Konflik -> Hapus Booking
+            $stmtDel = $conn->prepare("DELETE FROM bookings WHERE booking_id = ?");
+            $stmtDel->bind_param("i", $val_booking_id);
+            $stmtDel->execute();
+            $stmtDel->close();
+
+            echo "<script>alert('Maaf, kursi yang Anda pilih telah dibayar oleh pengguna lain. Booking ini otomatis dibatalkan.'); window.location.href='history.php';</script>";
+            exit;
+        } else {
+            // SITUASI 2: Aman -> Redirect ke Payment
+            header("Location: payment.php?booking_id=" . $val_booking_id);
+            exit;
+        }
+
+    } else {
+        // Booking tidak valid atau bukan milik user
+        header("Location: history.php");
+        exit;
+    }
+}
+
+// ==========================================
+// 4. QUERY MENAMPILKAN DATA BOOKING
+// ==========================================
+$sql = "SELECT b.booking_id, b.schedule_id, b.total_amount, b.status, b.created_at, s.departure_time, s.arrival_time, t.train_name, b.seats
   FROM bookings b
   LEFT JOIN schedules s ON b.schedule_id = s.schedule_id
   LEFT JOIN trains t ON s.train_id = t.train_id
@@ -26,7 +116,7 @@ $sql = "SELECT b.booking_id, b.schedule_id, b.total_amount, b.status, b.created_
 
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
-  echo '<h3>Database prepare error:</h3><pre>' . htmlspecialchars($conn->error) . '</pre>'; exit;
+    die('Database error: ' . $conn->error);
 }
 $stmt->bind_param('i', $user_id);
 $stmt->execute();
@@ -35,13 +125,9 @@ $bookings = [];
 while ($r = $res->fetch_assoc()) $bookings[] = $r;
 $stmt->close();
 
-// Cek Tiket / Kursi
-$hasTickets = false;
-$check = $conn->query("SHOW TABLES LIKE 'tickets'");
-if ($check && $check->num_rows > 0) $hasTickets = true;
-
+// 5. QUERY MENGAMBIL DATA KURSI (TICKETS)
 $seatsMap = [];
-if ($hasTickets && !empty($bookings)) {
+if (!empty($bookings)) {
   $ids = array_map(function($b){return (int)$b['booking_id'];}, $bookings);
   
   if (!empty($ids)) {
@@ -49,10 +135,6 @@ if ($hasTickets && !empty($bookings)) {
       $types = str_repeat('i', count($ids));
       $sql2 = "SELECT booking_id, seat_number FROM tickets WHERE booking_id IN (".$placeholders.")";
       $stmt2 = $conn->prepare($sql2);
-      
-      if (!$stmt2) {
-        echo '<h3>Database prepare error:</h3><pre>' . htmlspecialchars($conn->error) . '</pre>'; exit;
-      }
       
       if ($stmt2) {
         $refs = [];
@@ -85,7 +167,7 @@ if ($hasTickets && !empty($bookings)) {
       background-image: url('background.jpg'); /* Pastikan ada file background */
       background-size: cover;
       background-attachment: fixed;
-      background-color: #f4f6f8; /* Fallback color */
+      background-color: #f4f6f8; 
       min-height: 100vh;
       margin: 0;
       padding: 0;
@@ -113,7 +195,6 @@ if ($hasTickets && !empty($bookings)) {
       height: 100vh;
       background: linear-gradient(180deg, rgba(0, 0, 0, 0.95) 0%, rgba(13, 110, 253, 0.1) 100%);
       transition: left 0.3s ease;
-      /* PERBAIKAN: z-index ditingkatkan agar di atas navbar (1020) */
       z-index: 2000;
       overflow-y: auto;
       border-right: 2px solid #0d6efd;
@@ -180,7 +261,6 @@ if ($hasTickets && !empty($bookings)) {
       height: 100%;
       background: rgba(0, 0, 0, 0.5);
       display: none;
-      /* PERBAIKAN: z-index di bawah sidebar tapi di atas konten lain */
       z-index: 1999;
     }
 
@@ -229,7 +309,8 @@ if ($hasTickets && !empty($bookings)) {
     <ul class="sidebar-menu">
       <li><a href="home.php">🏠 Home</a></li>
       <li><a href="search.php">📅 Cari Jadwal</a></li>
-      <li><a href="history.php" class="active">📋 Riwayat Pemesanan</a></li> <li><a href="profile.php">👤 Profil Saya</a></li>
+      <li><a href="history.php" class="active">📋 Riwayat Pemesanan</a></li> 
+      <li><a href="profile.php">👤 Profil Saya</a></li>
       <li><a href="QnA.php">💭 QnA</a></li>
       <li><a href="logout.php" style="color: #ff6b6b;">🚪 Logout</a></li>
     </ul>
@@ -282,7 +363,19 @@ if ($hasTickets && !empty($bookings)) {
                   ?>
                   <span class="badge bg-<?= $statusColor ?> mb-2"><?= htmlspecialchars($b['status'] ?? '') ?></span>
                   <h6 class="mb-2">Rp <?= number_format((float)$b['total_amount'], 0, ',', '.') ?></h6>
-                  <a class="btn btn-sm btn-outline-primary" href="booking_confirm.php?booking_id=<?= (int)$b['booking_id'] ?>">Detail Tiket</a>
+                  
+                  <?php if ($b['status'] == 'PAID' || $b['status'] == 'CONFIRMED'): ?>
+                      <a class="btn btn-sm btn-outline-primary" href="ticket_detail.php?booking_id=<?= (int)$b['booking_id'] ?>">Detail Tiket</a>
+                  
+                  <?php elseif ($b['status'] == 'PENDING'): ?>
+                      <a class="btn btn-sm btn-warning text-dark fw-bold" href="?action=validate_payment&booking_id=<?= (int)$b['booking_id'] ?>" onclick="return confirm('Lanjutkan ke pembayaran?');">
+                          Bayar Sekarang
+                      </a>
+                  
+                  <?php else: ?>
+                      <button class="btn btn-sm btn-secondary" disabled>Dibatalkan</button>
+                  <?php endif; ?>
+                  
                 </div>
               </div>
               

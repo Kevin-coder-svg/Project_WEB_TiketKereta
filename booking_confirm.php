@@ -137,7 +137,7 @@ if ($user_id) {
         </dl>
 
         <div class="mt-3">
-          <a href="home.html" class="btn btn-secondary">Kembali ke Home</a>
+          <a href="home.php" class="btn btn-secondary">Kembali ke Home</a>
           <a href="search.php" class="btn btn-outline-primary">Cari Jadwal Lain</a>
         </div>
       </div>

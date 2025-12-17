@@ -1,15 +1,9 @@
 <?php
-// edit_profile.php - Halaman Edit Profil
-
 session_start();
-
-// Cek login
 if (!isset($_SESSION['user_id'])) {
     header('Location: HTML_login.html');
     exit;
 }
-
-// Koneksi Database
 $conn = new mysqli('localhost', 'root', '', 'tiket kereta');
 if ($conn->connect_error) {
     die('Koneksi database gagal: ' . $conn->connect_error);
@@ -18,11 +12,7 @@ if ($conn->connect_error) {
 $user_id = $_SESSION['user_id'];
 $message = ""; 
 
-// ===============================================
-// 1. PROSES UPDATE DATA
-// ===============================================
 if (isset($_POST['update_profil'])) {
-    // Ambil data (NIK dihapus dari sini agar aman)
     $email  = htmlspecialchars($_POST['email']);
     $phone  = htmlspecialchars($_POST['phone']);
     $alamat = htmlspecialchars($_POST['alamat']);
@@ -32,13 +22,11 @@ if (isset($_POST['update_profil'])) {
         $message = "<div class='alert alert-danger'>Format email tidak valid.</div>";
     } else {
         if (!empty($password_baru)) {
-            // Update Data + Password
             $hashed_password = password_hash($password_baru, PASSWORD_DEFAULT);
             $sql = "UPDATE users SET email=?, phone=?, alamat=?, password=? WHERE user_id=?";
             $stmt = $conn->prepare($sql);
             $stmt->bind_param("ssssi", $email, $phone, $alamat, $hashed_password, $user_id);
         } else {
-            // Update Data Saja
             $sql = "UPDATE users SET email=?, phone=?, alamat=? WHERE user_id=?";
             $stmt = $conn->prepare($sql);
             $stmt->bind_param("sssi", $email, $phone, $alamat, $user_id);
@@ -52,10 +40,6 @@ if (isset($_POST['update_profil'])) {
         $stmt->close();
     }
 }
-
-// ===============================================
-// 2. AMBIL DATA USER
-// ===============================================
 $sql_select = "SELECT * FROM users WHERE user_id = ?";
 $stmt_select = $conn->prepare($sql_select);
 $stmt_select->bind_param('i', $user_id);
@@ -81,11 +65,11 @@ $conn->close();
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
     <style>
-        /* === COPY STYLE DARI PROFILE.PHP === */
         body {
-            background-image: url('background.jpg'); /* Pastikan file ini ada */
+            background-image: url('background.jpg');
             background-size: cover;
             background-attachment: fixed;
+            background-color: #f4f6f8;
             min-height: 100vh;
             margin: 0;
             padding: 0;
@@ -103,7 +87,6 @@ $conn->close();
             margin-left: 0 !important;
         }
 
-        /* Sidebar Styles */
         .sidebar {
             position: fixed;
             left: -300px;
@@ -112,7 +95,7 @@ $conn->close();
             height: 100vh;
             background: linear-gradient(180deg, rgba(0, 0, 0, 0.95) 0%, rgba(13, 110, 253, 0.1) 100%);
             transition: left 0.3s ease;
-            z-index: 1000;
+            z-index: 2000;
             overflow-y: auto;
             border-right: 2px solid #0d6efd;
             padding-top: 20px;
@@ -155,6 +138,11 @@ $conn->close();
             padding-left: 30px;
         }
 
+        .sidebar-menu a.active {
+            background-color: #0d6efd;
+            border-left: 4px solid white;
+        }
+
         .sidebar-toggle {
             background: none;
             border: none;
@@ -173,21 +161,19 @@ $conn->close();
             height: 100%;
             background: rgba(0, 0, 0, 0.5);
             display: none;
-            z-index: 999;
+            z-index: 1999;
         }
 
         .sidebar-overlay.active {
             display: block;
         }
-
-        /* === FORM SPECIFIC STYLES (Adaptasi ke tema profile) === */
         .profile-container {
             background-color: rgba(255, 255, 255, 0.95);
             border-radius: 12px;
             padding: 40px;
             margin-top: 30px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-            max-width: 700px; /* Sedikit lebih lebar untuk form */
+            max-width: 800px;
             margin-left: auto;
             margin-right: auto;
         }
@@ -198,12 +184,11 @@ $conn->close();
             border-bottom: 2px solid #0d6efd;
             padding-bottom: 20px;
         }
-        
+
         .profile-header h3 {
             font-weight: bold;
             color: #333;
         }
-
         .form-group {
             margin-bottom: 1.2rem;
         }
@@ -228,17 +213,16 @@ $conn->close();
             border-color: #0d6efd;
         }
 
-        /* Style untuk input yang disabled (NIK & Nama) */
         input:disabled {
             background-color: #f1f3f5;
             color: #6c757d;
             cursor: not-allowed;
+            border-color: #dee2e6;
         }
-
         .action-buttons {
             display: flex;
             gap: 15px;
-            justify-content: flex-end; /* Tombol di kanan */
+            justify-content: flex-end;
             margin-top: 30px;
         }
 
@@ -250,6 +234,7 @@ $conn->close();
             transition: all 0.3s;
             text-decoration: none;
             border: none;
+            display: inline-block;
         }
 
         .btn-edit {
@@ -293,10 +278,10 @@ $conn->close();
         </div>
         <ul class="sidebar-menu">
             <li><a href="home.php">🏠 Home</a></li>
-            <li><a href="search.php">🔍 Cari Jadwal</a></li>
-            <li><a href="booking.php">🎫 Pesan Tiket</a></li>
+            <li><a href="search.php">📅 Cari Jadwal</a></li>
             <li><a href="history.php">📋 Riwayat Pemesanan</a></li>
-            <li><a href="profile.php">👤 Profil Saya</a></li> <li><a href="settings.php">⚙️ Pengaturan</a></li>
+            <li><a href="profile.php" class="active">👤 Profil Saya</a></li>
+            <li><a href="QnA.php">💭 QnA</a></li>
             <li><a href="logout.php" style="color: #ff6b6b;">🚪 Logout</a></li>
         </ul>
     </div>
@@ -307,7 +292,7 @@ $conn->close();
                 ☰
             </button>
             <a class="navbar-brand fw-bold" href="home.php">
-                🚂 KAI - Edit Profil
+                🚂 KAI - Tiket Kereta
             </a>
         </div>
     </nav>
@@ -363,7 +348,7 @@ $conn->close();
     </div>
 
     <footer>
-        <p>&copy; 2025 PT. KAI (Persero). All rights reserved.</p>
+        <p class="mb-0">&copy; 2025 PT. KAI (Persero). All rights reserved.</p>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
@@ -371,7 +356,6 @@ $conn->close();
         crossorigin="anonymous"></script>
     
     <script>
-        // Copy Script Sidebar dari profile.php agar fungsinya sama
         const sidebar = document.getElementById('sidebar');
         const sidebarToggle = document.getElementById('sidebarToggle');
         const sidebarOverlay = document.getElementById('sidebarOverlay');

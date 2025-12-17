@@ -135,7 +135,7 @@ $conn->close();
             margin-right: 15px;
         }
 
-        /* Overlay */
+     
         .sidebar-overlay {
             position: fixed;
             top: 0;
@@ -144,7 +144,7 @@ $conn->close();
             height: 100%;
             background: rgba(0, 0, 0, 0.5);
             display: none;
-            /* PERBAIKAN: z-index di bawah sidebar tapi di atas konten lain */
+        
             z-index: 1999; 
         }
 
@@ -152,14 +152,14 @@ $conn->close();
             display: block;
         }
 
-        /* Profile Specific Styles */
+    
         .profile-container {
             background-color: rgba(255, 255, 255, 0.95);
             border-radius: 12px;
             padding: 40px;
             margin-top: 30px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-            max-width: 800px; /* Batasi lebar agar rapi */
+            max-width: 800px; 
             margin-left: auto;
             margin-right: auto;
         }
@@ -385,24 +385,23 @@ $conn->close();
         integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
         crossorigin="anonymous"></script>
     <script>
-        // Sidebar Toggle Functionality
+  
         const sidebar = document.getElementById('sidebar');
         const sidebarToggle = document.getElementById('sidebarToggle');
         const sidebarOverlay = document.getElementById('sidebarOverlay');
 
-        // Toggle sidebar
+     
         sidebarToggle.addEventListener('click', function () {
             sidebar.classList.toggle('active');
             sidebarOverlay.classList.toggle('active');
         });
 
-        // Close sidebar when clicking overlay
+        
         sidebarOverlay.addEventListener('click', function () {
             sidebar.classList.remove('active');
             sidebarOverlay.classList.remove('active');
         });
 
-        // Close sidebar when clicking a menu item
         const sidebarMenuItems = document.querySelectorAll('.sidebar-menu a');
         sidebarMenuItems.forEach(item => {
             item.addEventListener('click', function () {

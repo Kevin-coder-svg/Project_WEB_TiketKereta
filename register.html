@@ -60,7 +60,7 @@
                   <textarea id="alamat" name="alamat" class="form-control" placeholder="Alamat lengkap" rows="3" required></textarea>
                 </div>
 
-                <!-- Username removed per request: only Nama Lengkap and NIK remain -->
+                
 
                 <div class="mb-3">
                   <label for="password" class="form-label">Password</label>
@@ -83,7 +83,7 @@
     </div>
 
     <script>
-      // Simple client-side validation saja
+    
       document.getElementById('registerForm').addEventListener('submit', function(e) {
         const fullName = document.getElementById('full_name').value.trim();
         const nip = document.getElementById('nip').value.trim();
@@ -102,13 +102,13 @@
           alert('NIP harus angka 6-20 digit');
           return;
         }
-        // simple email validation
+   
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
           e.preventDefault();
           alert('Masukkan email yang valid');
           return;
         }
-        // phone: digits only, 8-15
+    
         if (!/^\d{8,15}$/.test(phone)) {
           e.preventDefault();
           alert('No. telepon harus angka 8-15 digit');
@@ -125,7 +125,7 @@
           alert('Password harus minimal 6 karakter');
           return;
         }
-        // Jika valid, form benar-benar submit
+      
       });
     </script>
   </body>

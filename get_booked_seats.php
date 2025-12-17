@@ -11,7 +11,7 @@ if (!$conn) {
   echo json_encode([]);
   exit;
 }
-// Prefer tickets table join bookings to find seat_number values reserved for this schedule
+
 $booked = [];
 $checkTickets = $conn->query("SHOW TABLES LIKE 'tickets'");
 if ($checkTickets && $checkTickets->num_rows > 0) {
@@ -28,7 +28,7 @@ if ($checkTickets && $checkTickets->num_rows > 0) {
     $stmt->close();
   }
 }
-// fallback: if tickets table not present, try reading bookings.seats as count only (cannot map numbers)
-// return empty list in that case
+
+
 
 echo json_encode(array_values(array_unique($booked)));

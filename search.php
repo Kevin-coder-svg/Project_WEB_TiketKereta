@@ -1,19 +1,15 @@
 <?php
 session_start();
-// include_once 'db_config.php'; // Aktifkan jika file ini ada
-// Koneksi Manual (Fallback)
 $conn = new mysqli('localhost', 'root', '', 'tiket kereta');
 
 if ($conn->connect_error) {
     die('Koneksi database gagal: ' . $conn->connect_error);
 }
 
-// --- LOGIKA PENCARIAN (PHP) ---
 $origin = isset($_GET['origin']) ? trim($_GET['origin']) : '';
 $destination = isset($_GET['destination']) ? trim($_GET['destination']) : '';
-$class = isset($_GET['class']) ? trim($_GET['class']) : '';
 
-// LOGIKA TANGGAL
+
 $today = date('Y-m-d'); 
 $dateInput = isset($_GET['date']) ? trim($_GET['date']) : '';
 
@@ -25,112 +21,68 @@ if ($dateInput !== '' && $dateInput < $today) {
 
 $results = [];
 
-// Jika parameter kosong
-if ($origin === '' && $destination === '' && $date === '' && $class === '') {
-    $results = null; 
+$where = [];
+$types = '';
+$values = [];
+if ($origin !== '') {
+    $where[] = "(o.station_name LIKE ? OR o.code LIKE ? OR o.city LIKE ? )";
+    $types .= 'sss';
+    $values[] = "%$origin%";
+    $values[] = "%$origin%";
+    $values[] = "%$origin%";
+}
+
+if ($destination !== '') {
+    $where[] = "(d.station_name LIKE ? OR d.code LIKE ? OR d.city LIKE ? )";
+    $types .= 'sss';
+    $values[] = "%$destination%";
+    $values[] = "%$destination%";
+    $values[] = "%$destination%";
+}
+
+if ($date !== '') {
+    $where[] = "DATE(s.departure_time) = ?";
+    $types .= 's';
+    $values[] = $date;
 } else {
-    // Build Query
-    $where = [];
-    $types = '';
-    $values = [];
+    $where[] = "DATE(s.departure_time) >= ?";
+    $types .= 's';
+    $values[] = $today;
+}
 
-    if ($origin !== '') {
-        $where[] = "(o.station_name LIKE ? OR o.code LIKE ? OR o.city LIKE ? )";
-        $types .= 'sss';
-        $values[] = "%$origin%";
-        $values[] = "%$origin%";
-        $values[] = "%$origin%";
-    }
+$sql = "SELECT s.schedule_id, s.train_id, t.train_name, o.station_name AS origin_name, d.station_name AS destination_name, s.departure_time, s.arrival_time, s.price 
+        FROM `schedules` s 
+        JOIN `trains` t ON s.train_id = t.train_id 
+        LEFT JOIN `stations` o ON s.origin_station_id = o.station_id 
+        LEFT JOIN `stations` d ON s.destination_station_id = d.station_id";
 
-    if ($destination !== '') {
-        $where[] = "(d.station_name LIKE ? OR d.code LIKE ? OR d.city LIKE ? )";
-        $types .= 'sss';
-        $values[] = "%$destination%";
-        $values[] = "%$destination%";
-        $values[] = "%$destination%";
-    }
+if (!empty($where)) {
+    $sql .= ' WHERE ' . implode(' AND ', $where);
+}
+$sql .= " ORDER BY s.departure_time ASC LIMIT 500";
 
-    if ($date !== '') {
-        $where[] = "DATE(s.departure_time) = ?";
-        $types .= 's';
-        $values[] = $date;
-    } else {
-        $where[] = "DATE(s.departure_time) >= ?";
-        $types .= 's';
-        $values[] = $today;
-    }
-
-    $sql = "SELECT s.schedule_id, s.train_id, t.train_name, o.station_name AS origin_name, d.station_name AS destination_name, s.departure_time, s.arrival_time, s.price 
-            FROM `schedules` s 
-            JOIN `trains` t ON s.train_id = t.train_id 
-            LEFT JOIN `stations` o ON s.origin_station_id = o.station_id 
-            LEFT JOIN `stations` d ON s.destination_station_id = d.station_id";
-
-    if (!empty($where)) {
-        $sql .= ' WHERE ' . implode(' AND ', $where);
-    }
-    $sql .= " ORDER BY s.departure_time ASC LIMIT 500";
-
-    // $conn sudah dibuat di atas
-    
-    if (!$conn) {
-        $results = [];
-    } else {
-        $stmt = $conn->prepare($sql);
-        if ($stmt) {
-            if (!empty($values)) {
-                $bind_names = [];
-                $bind_names[] = $types;
-                for ($i = 0; $i < count($values); $i++) {
-                    $bindVar = 'bind' . $i;
-                    $$bindVar = $values[$i];
-                    $bind_names[] = &$$bindVar;
-                }
-                call_user_func_array([$stmt, 'bind_param'], $bind_names);
+if ($conn) {
+    $stmt = $conn->prepare($sql);
+    if ($stmt) {
+        if (!empty($values)) {
+            $bind_names = [];
+            $bind_names[] = $types;
+            for ($i = 0; $i < count($values); $i++) {
+                $bindVar = 'bind' . $i;
+                $$bindVar = $values[$i];
+                $bind_names[] = &$$bindVar;
             }
-
-            $stmt->execute();
-            $res = $stmt->get_result();
-            if ($res) {
-                while ($row = $res->fetch_assoc()) {
-                    $results[] = $row;
-                }
-            }
-            $stmt->close();
-
-            // Filter Kelas
-            $hasCarriagesTable = true;
-            if ($class !== '' && !empty($results)) {
-                $filtered = [];
-                try {
-                    $chkStmt = $conn->prepare("SELECT 1 FROM `carriages` WHERE train_id = ? AND name LIKE ? LIMIT 1");
-                } catch (mysqli_sql_exception $e) {
-                    $chkStmt = false;
-                    $hasCarriagesTable = false;
-                }
-
-                foreach ($results as $r) {
-                    $has = false;
-                    if ($hasCarriagesTable && $chkStmt) {
-                        $like = "%$class%";
-                        $tid = (int)$r['train_id'];
-                        $chkStmt->bind_param('is', $tid, $like);
-                        $chkStmt->execute();
-                        $g = $chkStmt->get_result();
-                        if ($g && $g->fetch_row()) {
-                            $has = true;
-                        }
-                    } else {
-                        $has = true;
-                    }
-                    if ($has) $filtered[] = $r;
-                }
-                if ($chkStmt) $chkStmt->close();
-                $results = $filtered;
-            }
-        } else {
-            $results = [];
+            call_user_func_array([$stmt, 'bind_param'], $bind_names);
         }
+
+        $stmt->execute();
+        $res = $stmt->get_result();
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $results[] = $row;
+            }
+        }
+        $stmt->close();
     }
 }
 ?>
@@ -155,7 +107,6 @@ if ($origin === '' && $destination === '' && $date === '' && $class === '') {
       padding: 0;
     }
 
-    /* Navbar Styles */
     .navbar {
       background: linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(13, 110, 253, 0.2) 100%) !important;
       border-bottom: 3px solid #0d6efd;
@@ -168,91 +119,22 @@ if ($origin === '' && $destination === '' && $date === '' && $class === '') {
       margin-left: 0 !important;
     }
 
-    /* Sidebar Styles */
     .sidebar {
-      position: fixed;
-      left: -300px;
-      top: 0;
-      width: 300px;
-      height: 100vh;
+      position: fixed; left: -300px; top: 0; width: 300px; height: 100vh;
       background: linear-gradient(180deg, rgba(0, 0, 0, 0.95) 0%, rgba(13, 110, 253, 0.1) 100%);
-      transition: left 0.3s ease;
-      /* PERBAIKAN: z-index ditingkatkan agar di atas navbar */
-      z-index: 2000;
-      overflow-y: auto;
-      border-right: 2px solid #0d6efd;
-      padding-top: 20px;
+      transition: left 0.3s ease; z-index: 2000; overflow-y: auto; border-right: 2px solid #0d6efd; padding-top: 20px;
     }
+    .sidebar.active { left: 0; }
+    .sidebar-header { color: white; font-size: 1.3rem; padding: 20px; border-bottom: 1px solid #0d6efd; margin-bottom: 20px; font-weight: bold; }
+    .sidebar-menu { list-style: none; padding: 0; margin: 0; }
+    .sidebar-menu li { border-bottom: 1px solid rgba(13, 110, 253, 0.2); }
+    .sidebar-menu a { display: block; padding: 15px 25px; color: white; text-decoration: none; transition: all 0.2s; font-size: 1.1rem; }
+    .sidebar-menu a:hover { background-color: #0d6efd; padding-left: 30px; }
+    .sidebar-menu a.active { background-color: #0d6efd; border-left: 4px solid white; }
+    .sidebar-toggle { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; padding: 0; margin-right: 15px; }
+    .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: none; z-index: 1999; }
+    .sidebar-overlay.active { display: block; }
 
-    .sidebar.active {
-      left: 0;
-    }
-
-    .sidebar-header {
-      color: white;
-      font-size: 1.3rem;
-      padding: 20px;
-      border-bottom: 1px solid #0d6efd;
-      margin-bottom: 20px;
-      font-weight: bold;
-    }
-
-    .sidebar-menu {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-
-    .sidebar-menu li {
-      border-bottom: 1px solid rgba(13, 110, 253, 0.2);
-    }
-
-    .sidebar-menu a {
-      display: block;
-      padding: 15px 25px;
-      color: white;
-      text-decoration: none;
-      transition: all 0.2s;
-      font-size: 1.1rem;
-    }
-
-    .sidebar-menu a:hover {
-      background-color: #0d6efd;
-      padding-left: 30px;
-    }
-
-    .sidebar-menu a.active {
-      background-color: #0d6efd;
-      border-left: 4px solid white;
-    }
-
-    .sidebar-toggle {
-      background: none;
-      border: none;
-      color: white;
-      font-size: 1.5rem;
-      cursor: pointer;
-      padding: 0;
-      margin-right: 15px;
-    }
-
-    .sidebar-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      display: none;
-      /* PERBAIKAN: z-index di bawah sidebar tapi di atas konten lain */
-      z-index: 1999;
-    }
-
-    .sidebar-overlay.active {
-      display: block;
-    }
-
-    /* Content Styling */
     .content-section {
       background-color: rgba(255, 255, 255, 0.95);
       border-radius: 12px;
@@ -265,13 +147,7 @@ if ($origin === '' && $destination === '' && $date === '' && $class === '') {
     .status-active { background: #d4edda; color: #155724; padding: 4px 10px; border-radius: 14px; font-size: 0.9rem;}
     .status-delayed { background: #fff3cd; color: #856404; padding: 4px 10px; border-radius: 14px; font-size: 0.9rem;}
 
-    footer {
-        text-align: center;
-        color: white;
-        margin-top: 20px;
-        padding: 20px;
-        background-color: rgba(0, 0, 0, 0.8);
-    }
+    footer { text-align: center; color: white; margin-top: 20px; padding: 20px; background-color: rgba(0, 0, 0, 0.8); }
   </style>
 </head>
 
@@ -279,12 +155,11 @@ if ($origin === '' && $destination === '' && $date === '' && $class === '') {
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
   <div class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-      ☰ Menu
-    </div>
+    <div class="sidebar-header">☰ Menu</div>
     <ul class="sidebar-menu">
       <li><a href="home.php">🏠 Home</a></li>
-      <li><a href="search.php" class="active">📅 Cari Jadwal</a></li> <li><a href="history.php">📋 Riwayat Pemesanan</a></li>
+      <li><a href="search.php" class="active">📅 Cari Jadwal</a></li> 
+      <li><a href="history.php">📋 Riwayat Pemesanan</a></li>
       <li><a href="profile.php">👤 Profil Saya</a></li>
       <li><a href="QnA.php">💭 QnA</a></li>
       <li><a href="logout.php" style="color: #ff6b6b;">🚪 Logout</a></li>
@@ -293,12 +168,8 @@ if ($origin === '' && $destination === '' && $date === '' && $class === '') {
 
   <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
     <div class="container-fluid">
-      <button class="sidebar-toggle" id="sidebarToggle" type="button">
-        ☰
-      </button>
-      <a class="navbar-brand fw-bold" href="home.php">
-        🚂 KAI - Tiket Kereta
-      </a>
+      <button class="sidebar-toggle" id="sidebarToggle" type="button">☰</button>
+      <a class="navbar-brand fw-bold" href="home.php">🚂 KAI - Tiket Kereta</a>
     </div>
   </nav>
 
@@ -307,11 +178,11 @@ if ($origin === '' && $destination === '' && $date === '' && $class === '') {
     <div class="content-section">
         <h4 class="mb-4 text-primary">🔍 Cari Jadwal Kereta</h4>
         <form method="get" class="row g-3">
-          <div class="col-md-3">
+          <div class="col-md-4">
             <label class="form-label fw-bold">Stasiun Asal</label>
             <input class="form-control" name="origin" value="<?= htmlspecialchars($origin) ?>" placeholder="Cth: Gambir">
           </div>
-          <div class="col-md-3">
+          <div class="col-md-4">
             <label class="form-label fw-bold">Stasiun Tujuan</label>
             <input class="form-control" name="destination" value="<?= htmlspecialchars($destination) ?>" placeholder="Cth: Bandung">
           </div>
@@ -321,16 +192,6 @@ if ($origin === '' && $destination === '' && $date === '' && $class === '') {
                    value="<?= htmlspecialchars($date) ?>" 
                    min="<?= date('Y-m-d') ?>">
           </div>
-          <div class="col-md-2">
-            <label class="form-label fw-bold">Kelas</label>
-            <select name="class" class="form-select">
-              <option value="">Semua</option>
-              <option value="Ekonomi" <?= $class === 'Ekonomi' ? 'selected' : '' ?>>Ekonomi</option>
-              <option value="Bisnis" <?= $class === 'Bisnis' ? 'selected' : '' ?>>Bisnis</option>
-              <option value="Eksekutif" <?= $class === 'Eksekutif' ? 'selected' : '' ?>>Eksekutif</option>
-              <option value="Premium" <?= $class === 'Premium' ? 'selected' : '' ?>>Premium</option>
-            </select>
-          </div>
           <div class="col-md-1 d-flex align-items-end">
             <button class="btn btn-primary w-100 fw-bold">Cari</button>
           </div>
@@ -339,24 +200,28 @@ if ($origin === '' && $destination === '' && $date === '' && $class === '') {
 
     <div class="content-section">
         <h4 class="mb-3">Hasil Pencarian</h4>
-        <?php if ($results === null): ?>
-          <div class="alert alert-info">
-            👋 Silakan isi formulir di atas dan klik "Cari" untuk melihat jadwal kereta.
-          </div>
-        <?php elseif (empty($results)): ?>
+        
+        <?php if (empty($results)): ?>
           <div class="alert alert-danger">
-            ❌ Tidak ada jadwal yang ditemukan untuk kriteria pencarian Anda.
+            ❌ Tidak ada jadwal yang ditemukan. Coba ubah tanggal atau rute pencarian.
           </div>
         <?php else: ?>
-          <p class="text-muted mb-3">Ditemukan <strong><?= count($results) ?></strong> jadwal perjalanan.</p>
+          <?php if($origin === '' && $destination === '' && $dateInput === ''): ?>
+             <div class="alert alert-info border-0 bg-info-subtle">
+                <strong>✨ Menampilkan semua jadwal perjalanan yang tersedia mulai hari ini.</strong>
+             </div>
+          <?php else: ?>
+             <p class="text-muted mb-3">Ditemukan <strong><?= count($results) ?></strong> jadwal sesuai pencarian.</p>
+          <?php endif; ?>
+
           <div class="table-responsive">
             <table class="table table-hover align-middle">
               <thead class="table-light">
                 <tr>
                   <th>Kereta</th>
                   <th>Rute</th>
+                  <th>Tanggal</th>
                   <th>Jam</th>
-                  <th>Kelas</th>
                   <th>Harga</th>
                   <th>Status</th>
                   <th>Aksi</th>
@@ -364,38 +229,18 @@ if ($origin === '' && $destination === '' && $date === '' && $class === '') {
               </thead>
               <tbody>
                 <?php foreach ($results as $r):
-                  // Setup variabel tampilan
                   $trainName = $r['train_name'] ?? 'N/A';
                   $scheduleId = (int)($r['schedule_id'] ?? 0);
                   $originName = $r['origin_name'] ?? '';
                   $destName = $r['destination_name'] ?? '';
                   $dep = isset($r['departure_time']) ? strtotime($r['departure_time']) : null;
                   $arr = isset($r['arrival_time']) ? strtotime($r['arrival_time']) : null;
-                  $dateStr = $dep ? date('d M Y', $dep) : '';
-                  $depTime = $dep ? date('H:i', $dep) : '';
-                  $arrTime = $arr ? date('H:i', $arr) : '';
+                  
+    
+                  $dateStr = $dep ? date('d M Y', $dep) : ''; 
+                  $depTime = $dep ? date('H:i', $dep) : '';   
+                  $arrTime = $arr ? date('H:i', $arr) : '';   
                   $price = $r['price'] ?? 0;
-
-                  // Logic ambil kelas
-                  $classes = [];
-                  if (isset($conn) && $conn) {
-                    try {
-                      $cstmt = $conn->prepare("SELECT name FROM carriages WHERE train_id = ?");
-                    } catch (Exception $e) { $cstmt = false; }
-                    
-                    if ($cstmt) {
-                      $tid = (int)$r['train_id'];
-                      $cstmt->bind_param('i', $tid);
-                      $cstmt->execute();
-                      $cres = $cstmt->get_result();
-                      while ($crow = $cres->fetch_assoc()) {
-                        $parts = preg_split('/\s+/', trim($crow['name']));
-                        if (!empty($parts)) $classes[] = $parts[0];
-                      }
-                      $classes = array_values(array_unique($classes));
-                      $cstmt->close();
-                    }
-                  }
                 ?>
                   <tr>
                     <td>
@@ -403,17 +248,17 @@ if ($origin === '' && $destination === '' && $date === '' && $class === '') {
                       <small class="text-muted">ID: <?= htmlspecialchars($scheduleId) ?></small>
                     </td>
                     <td>
-                        <?= htmlspecialchars($originName) ?> ➝ <?= htmlspecialchars($destName) ?><br>
-                        <small class="text-muted"><?= htmlspecialchars($dateStr) ?></small>
+                        <?= htmlspecialchars($originName) ?> ➝ <?= htmlspecialchars($destName) ?>
+                    </td>
+                    <td>
+                        <?= htmlspecialchars($dateStr) ?>
                     </td>
                     <td>
                         <?= htmlspecialchars($depTime) ?> <span class="text-muted">-</span> <?= htmlspecialchars($arrTime) ?>
                     </td>
-                    <td><?= htmlspecialchars(implode(', ', $classes)) ?></td>
                     <td class="fw-bold text-success">Rp <?= number_format($price, 0, ',', '.') ?></td>
                     <td>
                       <?php 
-                        // Cek apakah jadwal sudah lewat
                         $status = ($dep && $dep > time()) ? 'Tersedia' : 'Selesai';
                         $statusClass = ($status == 'Tersedia') ? 'status-active' : 'status-delayed';
                       ?>
@@ -444,24 +289,20 @@ if ($origin === '' && $destination === '' && $date === '' && $class === '') {
     crossorigin="anonymous"></script>
     
   <script>
-    // Sidebar Toggle Functionality
     const sidebar = document.getElementById('sidebar');
     const sidebarToggle = document.getElementById('sidebarToggle');
     const sidebarOverlay = document.getElementById('sidebarOverlay');
 
-    // Toggle sidebar
     sidebarToggle.addEventListener('click', function () {
       sidebar.classList.toggle('active');
       sidebarOverlay.classList.toggle('active');
     });
 
-    // Close sidebar when clicking overlay
     sidebarOverlay.addEventListener('click', function () {
       sidebar.classList.remove('active');
       sidebarOverlay.classList.remove('active');
     });
 
-    // Close sidebar when clicking a menu item
     const sidebarMenuItems = document.querySelectorAll('.sidebar-menu a');
     sidebarMenuItems.forEach(item => {
       item.addEventListener('click', function () {

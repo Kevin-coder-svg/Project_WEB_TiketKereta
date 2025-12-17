@@ -2,14 +2,14 @@
 session_start();
 include_once 'db_config.php';
 
-// Get booking_id from GET
+
 $booking_id = isset($_GET['booking_id']) ? (int)$_GET['booking_id'] : 0;
 if ($booking_id <= 0) {
     header('Location: search.php');
     exit;
 }
 
-// Fetch booking and tickets
+
 $conn = function_exists('get_db_connection') ? get_db_connection() : (isset($conn) ? $conn : null);
 $booking = null;
 $tickets = [];
@@ -21,7 +21,6 @@ if ($conn) {
     $booking = $res->fetch_assoc();
     $stmt->close();
 
-    // Fetch tickets
     $tstmt = $conn->prepare("SELECT passenger_name, seat_number FROM tickets WHERE booking_id = ?");
     $tstmt->bind_param('i', $booking_id);
     $tstmt->execute();

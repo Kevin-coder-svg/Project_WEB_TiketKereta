@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     die('Method not allowed');
 }
 
-// Get form data
+
 $full_name = isset($_POST['full_name']) ? trim($_POST['full_name']) : '';
 $nip = isset($_POST['nip']) ? trim($_POST['nip']) : '';
 $password_input = isset($_POST['password']) ? $_POST['password'] : '';
@@ -59,7 +59,7 @@ $email = isset($_POST['email']) ? trim($_POST['email']) : '';
 $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
 $alamat = isset($_POST['alamat']) ? trim($_POST['alamat']) : '';
 
-// Server-side validation
+
 $errors = [];
 
 if (strlen($full_name) < 2) {
@@ -74,22 +74,22 @@ if (strlen($password_input) < 6) {
     $errors[] = 'Password minimal 6 karakter.';
 }
 
-// Email validation
+
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     $errors[] = 'Email tidak valid.';
 }
 
-// Phone validation: digits only, 8-15 characters
+
 if (!ctype_digit($phone) || strlen($phone) < 8 || strlen($phone) > 15) {
     $errors[] = 'No. telepon harus berupa angka 8-15 digit.';
 }
 
-// Alamat validation: minimal 5 karakter
+
 if (strlen($alamat) < 5) {
     $errors[] = 'Alamat harus diisi minimal 5 karakter.';
 }
 
-// If there are validation errors, return them
+
 if (!empty($errors)) {
     http_response_code(400);
     ?>
@@ -122,7 +122,7 @@ if (!empty($errors)) {
     exit;
 }
 
-// Check for existing NIP or email to provide friendly error messages
+
 $existsErrors = [];
 
 $checkNik = $conn->prepare("SELECT 1 FROM users WHERE nik = ? LIMIT 1");
@@ -179,10 +179,10 @@ if (!empty($existsErrors)) {
     exit;
 }
 
-// Hash password using PHP's built-in password_hash (bcrypt)
+
 $hashed_password = password_hash($password_input, PASSWORD_BCRYPT);
 
-// Prepare SQL statement to prevent SQL injection
+
 $sql = "INSERT INTO users (full_name, password, nik, email, phone, alamat, role, created_at) VALUES (?, ?, ?, ?, ?, ?, 'user', NOW())";
 $stmt = $conn->prepare($sql);
 
@@ -214,12 +214,11 @@ if (!$stmt) {
     exit;
 }
 
-// Bind parameters (full_name, password, nik, email, phone, alamat)
 $stmt->bind_param('ssssss', $full_name, $hashed_password, $nip, $email, $phone, $alamat);
 
-// Execute statement
+
 if ($stmt->execute()) {
-    // Registration successful
+    
     $stmt->close();
     $conn->close();
     ?>
@@ -253,7 +252,7 @@ if ($stmt->execute()) {
     <?php
     exit;
 } else {
-    // Error in execution
+
     http_response_code(500);
     $error_msg = $stmt->error;
     $stmt->close();

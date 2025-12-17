@@ -2,14 +2,13 @@
 session_start();
 include_once 'db_config.php';
 
-// Get schedule_id from GET
+
 $schedule_id = isset($_GET['schedule_id']) ? (int)$_GET['schedule_id'] : 0;
 if ($schedule_id <= 0) {
     header('Location: search.php');
     exit;
 }
 
-// Fetch schedule details for display
 $conn = function_exists('get_db_connection') ? get_db_connection() : (isset($conn) ? $conn : null);
 $schedule = null;
 if ($conn) {
@@ -25,7 +24,7 @@ if (!$schedule) {
     exit;
 }
 
-// Handle POST
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $num_passengers = (int)($_POST['num_passengers'] ?? 0);
     $passenger_names = $_POST['passenger_name'] ?? [];
@@ -51,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if (!isset($error)) {
-            // Store data in session and redirect
+          
             $_SESSION['num_passengers'] = $num_passengers;
             $_SESSION['passengers'] = $passengers_data;
             $_SESSION['booking_schedule_id'] = $schedule_id;
@@ -142,7 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       container.innerHTML = html;
     });
 
-    // Trigger change on page load if a value is already selected
+  
     if (document.getElementById('num_passengers').value) {
         document.getElementById('num_passengers').dispatchEvent(new Event('change'));
     }

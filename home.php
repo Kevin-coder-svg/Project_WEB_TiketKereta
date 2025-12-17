@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-// Cek apakah user sudah login
+
 if (!isset($_SESSION['loggedin']) || !$_SESSION['loggedin']) {
     header('Location: login.php');
     exit();
@@ -41,7 +41,7 @@ $userEmail = $_SESSION['email'] ?? '';
       margin-left: 0 !important;
     }
 
-    /* Sidebar Styles */
+    
     .sidebar {
       position: fixed;
       left: -300px;
@@ -50,7 +50,6 @@ $userEmail = $_SESSION['email'] ?? '';
       height: 100vh;
       background: linear-gradient(180deg, rgba(0, 0, 0, 0.95) 0%, rgba(13, 110, 253, 0.1) 100%);
       transition: left 0.3s ease;
-      /* PERBAIKAN: z-index ditingkatkan agar di atas navbar */
       z-index: 2000;
       overflow-y: auto;
       border-right: 2px solid #0d6efd;
@@ -99,7 +98,7 @@ $userEmail = $_SESSION['email'] ?? '';
       border-left: 4px solid white;
     }
 
-    /* Toggle Button */
+
     .sidebar-toggle {
       background: none;
       border: none;
@@ -110,7 +109,7 @@ $userEmail = $_SESSION['email'] ?? '';
       margin-right: 15px;
     }
 
-    /* Overlay */
+
     .sidebar-overlay {
       position: fixed;
       top: 0;
@@ -119,7 +118,7 @@ $userEmail = $_SESSION['email'] ?? '';
       height: 100%;
       background: rgba(0, 0, 0, 0.5);
       display: none;
-      /* PERBAIKAN: z-index di bawah sidebar tapi di atas konten lain */
+      
       z-index: 1999;
     }
 
@@ -282,24 +281,24 @@ $userEmail = $_SESSION['email'] ?? '';
     integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
     crossorigin="anonymous"></script>
   <script>
-    // Sidebar Toggle Functionality
+   
     const sidebar = document.getElementById('sidebar');
     const sidebarToggle = document.getElementById('sidebarToggle');
     const sidebarOverlay = document.getElementById('sidebarOverlay');
 
-    // Toggle sidebar
+    
     sidebarToggle.addEventListener('click', function () {
       sidebar.classList.toggle('active');
       sidebarOverlay.classList.toggle('active');
     });
 
-    // Close sidebar when clicking overlay
+   
     sidebarOverlay.addEventListener('click', function () {
       sidebar.classList.remove('active');
       sidebarOverlay.classList.remove('active');
     });
 
-    // Close sidebar when clicking a menu item
+    
     const sidebarMenuItems = document.querySelectorAll('.sidebar-menu a');
     sidebarMenuItems.forEach(item => {
       item.addEventListener('click', function () {
